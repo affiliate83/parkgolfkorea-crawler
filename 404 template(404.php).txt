@@ -1,0 +1,30 @@
+<?php
+/**
+ * 404.php - 페이지를 찾을 수 없음
+ */
+get_header();
+?>
+
+<div class="main-content-area">
+    <div class="container">
+        <div class="error-404" style="text-align:center; padding:100px 20px;">
+            <div style="font-size:80px; margin-bottom:20px;">⛳</div>
+            <h1 style="font-size:80px; font-weight:900; color:var(--primary); line-height:1;">404</h1>
+            <h2 style="font-size:24px; margin:16px 0 12px;">페이지를 찾을 수 없습니다</h2>
+            <p style="color:#777; margin-bottom:30px;">요청하신 페이지가 삭제되었거나 주소가 변경되었습니다.</p>
+            <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                <a href="<?php echo esc_url(home_url('/')); ?>"
+                   style="padding:12px 28px; background:var(--primary); color:#fff; border-radius:8px; font-weight:600;">
+                    <i class="fas fa-home"></i> 홈으로 가기
+                </a>
+                <a href="<?php echo esc_url(home_url('/courses/')); ?>"
+                   style="padding:12px 28px; background:#f0f9f4; color:var(--primary); border-radius:8px; font-weight:600; border:1px solid var(--primary);">
+                    <i class="fas fa-golf-ball"></i> 파크골프장 찾기
+                </a>
+            </div>
+            <?php get_search_form(); ?>
+        </div>
+    </div>
+</div>
+
+<?php get_footer(); ?>

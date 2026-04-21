@@ -1,0 +1,20 @@
+# 환경변수 (절대 커밋 금지)
+.env
+
+# 크롤러 중복방지 DB (로컬용, GitHub Actions는 캐시로 관리)
+crawler/dedup.db
+
+# 로그
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+
+# 가상환경
+venv/
+.venv/
+env/

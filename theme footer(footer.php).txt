@@ -1,0 +1,95 @@
+<!-- 푸터 -->
+<footer class="site-footer" id="site-footer">
+    <div class="container">
+        <div class="footer-grid">
+
+            <!-- 1열: 사이트 소개 -->
+            <div class="footer-col footer-about">
+                <div class="footer-logo">
+                    <a href="<?php echo esc_url(home_url('/')); ?>">
+                        ⛳ <?php bloginfo('name'); ?>
+                    </a>
+                </div>
+                <p><?php echo get_option('parkgolf_site_description', '전국 파크골프장 정보, 예약방법, 대회일정을 한곳에서 확인하세요.'); ?></p>
+                <div class="footer-social">
+                    <?php
+                    $socials = array(
+                        'youtube'   => array('fab fa-youtube', get_option('parkgolf_youtube', '#')),
+                        'instagram' => array('fab fa-instagram', get_option('parkgolf_instagram', '#')),
+                        'facebook'  => array('fab fa-facebook', get_option('parkgolf_facebook', '#')),
+                        'naver'     => array('fas fa-blog', get_option('parkgolf_naver_blog', '#')),
+                    );
+                    foreach ($socials as $key => $info):
+                        if ($info[1] && $info[1] !== '#'):
+                    ?>
+                    <a href="<?php echo esc_url($info[1]); ?>" target="_blank" rel="noopener" aria-label="<?php echo esc_attr($key); ?>">
+                        <i class="<?php echo esc_attr($info[0]); ?>"></i>
+                    </a>
+                    <?php
+                        endif;
+                    endforeach;
+                    ?>
+                </div>
+            </div>
+
+            <!-- 2~4열: 위젯 또는 기본 메뉴 -->
+            <?php if (is_active_sidebar('footer-2')): ?>
+                <div class="footer-col"><?php dynamic_sidebar('footer-2'); ?></div>
+            <?php else: ?>
+            <div class="footer-col">
+                <h4>골프장 정보</h4>
+                <ul>
+                    <li><a href="<?php echo esc_url(home_url('/courses/?region=seoul')); ?>">수도권 파크골프장</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/courses/?region=busan')); ?>">부산/경남 파크골프장</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/courses/?region=daegu')); ?>">대구/경북 파크골프장</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/courses/?region=gwangju')); ?>">광주/전라 파크골프장</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/courses/')); ?>">전체 목록 보기</a></li>
+                </ul>
+            </div>
+            <?php endif; ?>
+
+            <?php if (is_active_sidebar('footer-3')): ?>
+                <div class="footer-col"><?php dynamic_sidebar('footer-3'); ?></div>
+            <?php else: ?>
+            <div class="footer-col">
+                <h4>대회/이벤트</h4>
+                <ul>
+                    <li><a href="<?php echo esc_url(home_url('/events/')); ?>">전국대회 일정</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/events/?type=local')); ?>">지역대회 일정</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/events/?type=club')); ?>">동호회 이벤트</a></li>
+                </ul>
+            </div>
+            <?php endif; ?>
+
+            <?php if (is_active_sidebar('footer-4')): ?>
+                <div class="footer-col"><?php dynamic_sidebar('footer-4'); ?></div>
+            <?php else: ?>
+            <div class="footer-col">
+                <h4>이용안내</h4>
+                <ul>
+                    <li><a href="<?php echo esc_url(home_url('/about-parkgolf/')); ?>">파크골프란?</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/guide/')); ?>">규칙 안내</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/reservation-guide/')); ?>">예약 방법</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/privacy-policy/')); ?>">개인정보처리방침</a></li>
+                    <li><a href="<?php echo esc_url(home_url('/contact/')); ?>">문의하기</a></li>
+                </ul>
+            </div>
+            <?php endif; ?>
+
+        </div><!-- /footer-grid -->
+
+        <!-- 푸터 하단 -->
+        <div class="footer-bottom">
+            <p>© <?php echo date('Y'); ?> <?php bloginfo('name'); ?>. All Rights Reserved.</p>
+            <p class="coupang-disclaimer">
+                이 사이트의 일부 링크는 쿠팡 파트너스 링크입니다.
+                이에 따른 일정액의 수수료를 제공받을 수 있습니다.
+            </p>
+        </div>
+
+    </div><!-- /container -->
+</footer>
+
+<?php wp_footer(); ?>
+</body>
+</html>

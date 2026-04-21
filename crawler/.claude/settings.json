@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Command python)",
+      "PowerShell(& \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" --version)",
+      "PowerShell(Invoke-WebRequest -Uri \"https://parkgolfkorea.com\" -Method Head -TimeoutSec 10)"
+    ]
+  }
+}

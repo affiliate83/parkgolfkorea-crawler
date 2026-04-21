@@ -1,0 +1,23 @@
+
+/*
+Theme Name: 파크골프 코리아
+Theme URI: https://parkgolf-korea.com
+Author: ParkGolf Korea
+Author URI: https://parkgolf-korea.com
+Description: 전국 파크골프장 정보 포털 전용 워드프레스 테마. 지역별 골프장 정보, 예약방법, 대회일정, 뉴스를 제공합니다.
+Version: 1.0.0
+Requires at least: 5.0
+Tested up to: 6.5
+Requires PHP: 7.4
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: parkgolf-korea
+Tags: sports, blog, news, responsive, custom-menu, featured-images
+*/
+
+/* ============================
+   이 파일은 워드프레스 테마 인식용입니다.
+   실제 스타일은 assets/css/style.css 에 있습니다.
+   ============================ */
+
+   

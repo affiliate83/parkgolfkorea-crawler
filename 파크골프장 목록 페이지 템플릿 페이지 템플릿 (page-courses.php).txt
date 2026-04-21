@@ -1,0 +1,302 @@
+<?php
+/**
+ * Template Name: 파크골프장 목록 페이지 템플릿
+ */
+get_header();
+?>
+
+<div class="search-page-wrap">
+
+  <!-- 히어로 검색 배너 -->
+  <div class="search-hero">
+    <div class="container">
+      <h1>⛳ 전국 파크골프장 검색</h1>
+      <p>네이버 기반 실제 데이터 · 전국 400개+ 파크골프장을 빠르게 찾아보세요</p>
+      <div class="search-main-wrap">
+        <input type="text" id="courseSearch"
+               placeholder="골프장 이름, 지역명 검색... (예: 강서, 낙동강, 춘천)"
+               autocomplete="off">
+        <button onclick="doSearch()">🔍 검색</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 필터 바 -->
+  <div class="search-filter-sticky">
+    <div class="container">
+      <div class="filter-row">
+
+        <div class="filter-group">
+          <label>📍 지역</label>
+          <div class="filter-chips" id="regionChips">
+            <button class="chip active" data-region="">전체</button>
+            <button class="chip" data-region="seoul">수도권</button>
+            <button class="chip" data-region="busan">부산/경남</button>
+            <button class="chip" data-region="daegu">대구/경북</button>
+            <button class="chip" data-region="gwangju">광주/전라</button>
+            <button class="chip" data-region="daejeon">대전/충청</button>
+            <button class="chip" data-region="gangwon">강원도</button>
+            <button class="chip" data-region="jeju">제주도</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>🔤 정렬</label>
+          <select id="sortSelect" onchange="currentPage=1;doSearch()">
+            <option value="date">최신순</option>
+            <option value="title">이름순</option>
+          </select>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 결과 영역 -->
+  <div class="container" style="padding-top:24px;">
+    <div class="results-header">
+      <span id="resultCount">불러오는 중...</span>
+      <div class="view-btns">
+        <button class="view-btn active" onclick="setView('grid')" title="그리드">⊞</button>
+        <button class="view-btn" onclick="setView('list')" title="리스트">☰</button>
+      </div>
+    </div>
+
+    <div class="course-grid" id="courseGrid">
+      <div class="loading-msg">⛳ 골프장 정보를 불러오는 중...</div>
+    </div>
+
+    <div class="search-pagination" id="searchPagination"></div>
+  </div>
+
+</div><!-- .search-page-wrap -->
+
+<style>
+.search-hero {
+  background: linear-gradient(135deg, #1a6e3c 0%, #2d9e5f 100%);
+  padding: 48px 0 36px; color: #fff; text-align: center;
+}
+.search-hero h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+.search-hero p  { font-size: 15px; opacity: 0.85; margin-bottom: 20px; }
+.search-main-wrap {
+  display: flex; gap: 8px; max-width: 580px; margin: 0 auto;
+}
+.search-main-wrap input {
+  flex: 1; padding: 13px 16px; border-radius: 8px;
+  border: none; font-size: 15px; outline: none;
+  font-family: inherit;
+}
+.search-main-wrap button {
+  padding: 13px 22px; background: #ff8c00; color: #fff;
+  border: none; border-radius: 8px; font-size: 15px;
+  font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.search-filter-sticky {
+  background: #fff; border-bottom: 1px solid #e0e0e0;
+  padding: 12px 0; position: sticky; top: 0; z-index: 200;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.filter-row {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+}
+.filter-group { display: flex; align-items: center; gap: 8px; }
+.filter-group label {
+  font-size: 13px; font-weight: 600; color: #444; white-space: nowrap;
+}
+.filter-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip {
+  padding: 5px 13px; border: 1px solid #ccc; border-radius: 20px;
+  font-size: 13px; cursor: pointer; background: #fff;
+  transition: all 0.2s; font-family: inherit;
+}
+.chip:hover, .chip.active {
+  background: #1a6e3c; color: #fff; border-color: #1a6e3c;
+}
+#sortSelect {
+  padding: 6px 10px; border: 1px solid #ccc;
+  border-radius: 6px; font-size: 13px; font-family: inherit;
+}
+.results-header {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 14px;
+}
+#resultCount { font-size: 14px; color: #555; font-weight: 500; }
+.view-btns { display: flex; gap: 4px; }
+.view-btn {
+  padding: 5px 10px; border: 1px solid #ccc;
+  background: #fff; border-radius: 6px; cursor: pointer; font-size: 15px;
+}
+.view-btn.active { background: #1a6e3c; color: #fff; border-color: #1a6e3c; }
+.loading-msg {
+  text-align: center; padding: 60px; color: #999;
+  font-size: 16px; grid-column: 1/-1;
+}
+.no-results {
+  text-align: center; padding: 60px; grid-column: 1/-1;
+}
+.no-results .nr-icon { font-size: 48px; margin-bottom: 12px; }
+.no-results h3 { font-size: 18px; margin-bottom: 8px; color: #333; }
+.no-results p { color: #999; }
+.search-pagination {
+  display: flex; gap: 5px; justify-content: center;
+  flex-wrap: wrap; margin: 32px 0 48px;
+}
+.page-btn {
+  padding: 8px 14px; border: 1px solid #ccc;
+  border-radius: 6px; cursor: pointer; background: #fff;
+  font-size: 13px; transition: all 0.2s; font-family: inherit;
+}
+.page-btn:hover, .page-btn.active {
+  background: #1a6e3c; color: #fff; border-color: #1a6e3c;
+}
+@media (max-width: 768px) {
+  .search-main-wrap { flex-direction: column; }
+  .filter-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .filter-chips { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+  .search-hero h1 { font-size: 22px; }
+}
+</style>
+
+<script>
+const PER_PAGE    = 24;
+let currentPage   = 1;
+let currentRegion = '';
+let currentView   = 'grid';
+let debouncer     = null;
+let totalPages    = 1;
+
+document.addEventListener('DOMContentLoaded', () => {
+  doSearch();
+
+  document.getElementById('courseSearch').addEventListener('input', () => {
+    clearTimeout(debouncer);
+    debouncer = setTimeout(() => { currentPage = 1; doSearch(); }, 450);
+  });
+  document.getElementById('courseSearch').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { currentPage = 1; doSearch(); }
+  });
+
+  document.querySelectorAll('#regionChips .chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#regionChips .chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentRegion = btn.dataset.region;
+      currentPage   = 1;
+      doSearch();
+    });
+  });
+});
+
+function doSearch() {
+  const keyword = document.getElementById('courseSearch').value.trim();
+  const sort    = document.getElementById('sortSelect').value;
+  const order   = sort === 'title' ? 'asc' : 'desc';
+
+  let url = `<?php echo home_url(); ?>/wp-json/wp/v2/parkgolf_course?per_page=${PER_PAGE}&page=${currentPage}&_embed&orderby=${sort}&order=${order}`;
+  if (keyword)       url += `&search=${encodeURIComponent(keyword)}`;
+  if (currentRegion) url += `&region=${encodeURIComponent(currentRegion)}`;
+
+  document.getElementById('courseGrid').innerHTML = '<div class="loading-msg">⛳ 검색 중...</div>';
+  document.getElementById('searchPagination').innerHTML = '';
+
+  fetch(url)
+    .then(res => {
+      const total = parseInt(res.headers.get('X-WP-Total') || '0');
+      totalPages  = parseInt(res.headers.get('X-WP-TotalPages') || '1');
+      return res.json().then(data => ({ data, total }));
+    })
+    .then(({ data, total }) => {
+      renderResults(data, total);
+      renderPagination();
+    })
+    .catch(() => {
+      document.getElementById('courseGrid').innerHTML =
+        '<div class="no-results"><div class="nr-icon">⚠️</div><h3>오류가 발생했습니다</h3><p>잠시 후 다시 시도해주세요.</p></div>';
+    });
+}
+
+function renderResults(posts, total) {
+  const grid = document.getElementById('courseGrid');
+  document.getElementById('resultCount').textContent = `총 ${total.toLocaleString()}개 파크골프장`;
+
+  if (!posts || !posts.length) {
+    grid.innerHTML = `<div class="no-results">
+      <div class="nr-icon">🔍</div>
+      <h3>검색 결과가 없습니다</h3>
+      <p>다른 키워드나 지역을 선택해보세요.</p>
+    </div>`;
+    return;
+  }
+
+  grid.className = 'course-grid' + (currentView === 'list' ? ' list-view' : '');
+  grid.innerHTML = posts.map(post => {
+    const title   = post.title?.rendered || '';
+    const link    = post.link || '#';
+    const address = post.meta?.course_address || '';
+    const phone   = post.meta?.course_phone   || '';
+    const fee     = post.meta?.course_fee     || '';
+    const holes   = post.meta?.course_holes   || '';
+    const hours   = post.meta?.course_hours   || '';
+    const terms   = post._embedded?.['wp:term']?.[0] || [];
+    const region  = terms[0]?.name || '';
+    const isFree  = fee.includes('무료');
+    const feeLabel = fee ? (isFree ? '무료' : '유료') : '현장문의';
+    const feeClass = isFree ? 'free' : (fee ? 'paid' : 'inquiry');
+
+    return `<div class="course-card">
+      <a href="${link}" style="display:block;text-decoration:none;color:inherit;height:100%;">
+        <div class="course-card-header">
+          <span class="badge ${feeClass}">${feeLabel}</span>
+          ${region ? `<span class="badge region">${region}</span>` : ''}
+          <div class="course-img-placeholder">⛳</div>
+        </div>
+        <div class="course-card-body">
+          <h3 class="course-title">${title}</h3>
+          ${address ? `<p class="course-address"><i class="fas fa-map-marker-alt"></i> ${address}</p>` : ''}
+          <div class="course-specs">
+            ${holes ? `<span><i class="fas fa-golf-ball"></i> ${holes}홀</span>` : ''}
+            ${hours ? `<span><i class="fas fa-clock"></i> ${hours}</span>` : ''}
+            ${phone ? `<span><i class="fas fa-phone"></i> ${phone}</span>` : ''}
+          </div>
+        </div>
+      </a>
+    </div>`;
+  }).join('');
+}
+
+function renderPagination() {
+  const pag = document.getElementById('searchPagination');
+  if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+  let html = '';
+  if (currentPage > 1)
+    html += `<button class="page-btn" onclick="goPage(${currentPage-1})">◀ 이전</button>`;
+
+  const start = Math.max(1, currentPage - 2);
+  const end   = Math.min(totalPages, currentPage + 2);
+  for (let i = start; i <= end; i++)
+    html += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+
+  if (currentPage < totalPages)
+    html += `<button class="page-btn" onclick="goPage(${currentPage+1})">다음 ▶</button>`;
+
+  pag.innerHTML = html;
+}
+
+function goPage(p) {
+  currentPage = p;
+  doSearch();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.view-btn').forEach((b, i) => {
+    b.classList.toggle('active', (v==='grid'&&i===0)||(v==='list'&&i===1));
+  });
+  const g = document.getElementById('courseGrid');
+  g.classList.toggle('list-view', v === 'list');
+}
+</script>
+
+<?php get_footer(); ?>

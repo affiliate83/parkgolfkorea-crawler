@@ -1,0 +1,418 @@
+<?php
+/**
+ * 메인 페이지 템플릿 (index.php)
+ * - 프론트 페이지 & 블로그 목록 겸용
+ */
+get_header();
+?>
+
+<?php if (is_front_page()): ?>
+<!-- ============================================================
+     프론트 페이지 (메인 홈)
+     ============================================================ -->
+
+<!-- 히어로 섹션 -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content">
+            <span class="hero-badge">🌿 <?php echo date('Y'); ?> 시즌 OPEN</span>
+            <h1>전국 파크골프장<br>한눈에 찾기</h1>
+            <p>가까운 파크골프장을 검색하고<br>예약 방법부터 대회 일정까지 확인하세요</p>
+
+            <!-- 검색 폼 -->
+            <form class="hero-search" role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>">
+                <input type="search" name="s" placeholder="지역명, 골프장명으로 검색..." value="<?php echo get_search_query(); ?>">
+                <button type="submit"><i class="fas fa-search"></i> 검색</button>
+            </form>
+
+            <!-- 통계 -->
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <strong data-count="1200">1,200+</strong>
+                    <span>전국 파크골프장</span>
+                </div>
+                <div class="stat-item">
+                    <strong data-count="150">150+</strong>
+                    <span>연간 대회</span>
+                </div>
+                <div class="stat-item">
+                    <strong data-count="500000">50만+</strong>
+                    <span>파크골프 인구</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 쿠팡 파트너스 상단 배너 -->
+<?php parkgolf_coupang_banner('horizontal'); ?>
+
+<!-- 지역별 빠른 찾기 -->
+<section class="region-section">
+    <div class="container">
+        <div class="section-header">
+            <h2>지역별 파크골프장 찾기</h2>
+            <p>원하는 지역을 선택해 파크골프장 정보와 예약 방법을 확인하세요</p>
+        </div>
+        <div class="region-grid">
+            <?php
+            $regions = get_terms(array('taxonomy' => 'region', 'hide_empty' => false, 'parent' => 0));
+            $region_icons = array('수도권'=>'🏙️','부산'=>'🌊','경남'=>'🌊','대구'=>'🏔️','경북'=>'🏔️','광주'=>'🌾','전라'=>'🌾','대전'=>'🌲','충청'=>'🌲','강원'=>'⛰️','제주'=>'🌺');
+
+            if (!empty($regions) && !is_wp_error($regions)):
+                foreach ($regions as $region):
+                    $count = $region->count;
+                    $icon = '🏌️';
+                    foreach ($region_icons as $key => $emoji) {
+                        if (strpos($region->name, $key) !== false) { $icon = $emoji; break; }
+                    }
+            ?>
+            <a href="<?php echo esc_url(get_term_link($region)); ?>" class="region-card">
+                <div class="region-icon"><?php echo $icon; ?></div>
+                <h3><?php echo esc_html($region->name); ?></h3>
+                <div class="region-count"><?php echo $count; ?>개소</div>
+            </a>
+            <?php
+                endforeach;
+            else:
+                $default_regions = array(
+                    array('수도권','서울·경기·인천','🏙️','seoul'),
+                    array('부산/경남','부산·울산·경남','🌊','busan'),
+                    array('대구/경북','대구·경북','🏔️','daegu'),
+                    array('광주/전라','광주·전북·전남','🌾','gwangju'),
+                    array('대전/충청','대전·세종·충청','🌲','daejeon'),
+                    array('강원도','강원 전 지역','⛰️','gangwon'),
+                    array('제주도','제주 전 지역','🌺','jeju'),
+                );
+                foreach ($default_regions as $r):
+            ?>
+            <a href="<?php echo esc_url(home_url('/courses/?region=' . $r[3])); ?>" class="region-card">
+                <div class="region-icon"><?php echo $r[2]; ?></div>
+                <h3><?php echo $r[0]; ?></h3>
+                <span><?php echo $r[1]; ?></span>
+                <div class="region-count">보러가기</div>
+            </a>
+            <?php
+                endforeach;
+            endif;
+            ?>
+            <a href="<?php echo esc_url(home_url('/courses/')); ?>" class="region-card all-card">
+                <div class="region-icon">🗺️</div>
+                <h3>전체보기</h3>
+                <span>전국 파크골프장</span>
+                <div class="region-count">전체 목록</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- 메인 콘텐츠 + 사이드바 -->
+<div class="main-content-area">
+    <div class="container">
+        <div class="content-sidebar-wrap">
+
+            <!-- 메인 콘텐츠 -->
+            <main class="main-content" id="main-content">
+
+                <!-- 최신 뉴스/소식 -->
+                <section class="news-section">
+                    <div class="section-header-inline">
+                        <h2><i class="fas fa-newspaper"></i> 최신 뉴스/소식</h2>
+                        <a href="<?php echo esc_url(home_url('/news/')); ?>" class="more-link">더보기 <i class="fas fa-chevron-right"></i></a>
+                    </div>
+
+                    <?php
+                    $news_query = new WP_Query(array(
+                        'post_type'      => 'post',
+                        'posts_per_page' => 5,
+                        'orderby'        => 'date',
+                        'order'          => 'DESC',
+                    ));
+                    ?>
+
+                    <div class="news-grid">
+                    <?php if ($news_query->have_posts()): ?>
+                        <?php $is_first = true; while ($news_query->have_posts()): $news_query->the_post(); ?>
+
+                        <?php if ($is_first): $is_first = false; ?>
+                        <article class="news-card featured">
+                            <div class="news-image">
+                                <?php if (has_post_thumbnail()): ?>
+                                    <a href="<?php the_permalink(); ?>"><?php the_post_thumbnail('parkgolf-card'); ?></a>
+                                <?php else: ?>
+                                    <div class="news-img-placeholder"><i class="fas fa-golf-ball"></i></div>
+                                <?php endif; ?>
+                                <?php
+                                $cats = get_the_category();
+                                if ($cats): ?>
+                                <span class="news-category"><?php echo esc_html($cats[0]->name); ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="news-body">
+                                <h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
+                                <p><?php echo wp_trim_words(get_the_excerpt(), 30); ?></p>
+                                <div class="news-meta">
+                                    <span><i class="fas fa-calendar"></i> <?php echo get_the_date('Y.m.d'); ?></span>
+                                    <span><i class="fas fa-eye"></i> <?php echo get_post_meta(get_the_ID(), 'post_views_count', true) ?: 0; ?></span>
+                                </div>
+                            </div>
+                        </article>
+
+                        <?php else: ?>
+                        <article class="news-card">
+                            <div class="news-body">
+                                <?php
+                                $cats = get_the_category();
+                                if ($cats):
+                                    $cat = $cats[0];
+                                    $cat_class = 'category-info';
+                                    if (strpos($cat->name, '대회') !== false) $cat_class = 'category-event';
+                                    if (strpos($cat->name, '규정') !== false || strpos($cat->name, '규칙') !== false) $cat_class = 'category-rule';
+                                ?>
+                                <span class="news-category-inline <?php echo $cat_class; ?>"><?php echo esc_html($cat->name); ?></span>
+                                <?php endif; ?>
+                                <h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
+                                <div class="news-meta">
+                                    <span><i class="fas fa-calendar"></i> <?php echo get_the_date('Y.m.d'); ?></span>
+                                </div>
+                            </div>
+                        </article>
+                        <?php endif; ?>
+
+                        <?php endwhile; wp_reset_postdata(); ?>
+                    <?php else: ?>
+                        <p class="no-content">아직 등록된 뉴스가 없습니다.</p>
+                    <?php endif; ?>
+                    </div><!-- /news-grid -->
+                </section>
+
+                <!-- 다가오는 대회/이벤트 -->
+                <section class="schedule-section">
+                    <div class="section-header-inline">
+                        <h2><i class="fas fa-trophy"></i> 다가오는 대회/이벤트</h2>
+                        <a href="<?php echo esc_url(home_url('/events/')); ?>" class="more-link">전체일정 <i class="fas fa-chevron-right"></i></a>
+                    </div>
+
+                    <?php
+                    $today = date('Y-m-d');
+                    $events_query = new WP_Query(array(
+                        'post_type'      => 'parkgolf_event',
+                        'posts_per_page' => 4,
+                        'meta_key'       => 'event_date_start',
+                        'orderby'        => 'meta_value',
+                        'order'          => 'ASC',
+                        'meta_query'     => array(
+                            array(
+                                'key'     => 'event_date_start',
+                                'value'   => $today,
+                                'compare' => '>=',
+                                'type'    => 'DATE',
+                            ),
+                        ),
+                    ));
+                    ?>
+
+                    <div class="schedule-list">
+                    <?php if ($events_query->have_posts()): ?>
+                        <?php while ($events_query->have_posts()): $events_query->the_post(); ?>
+                            <?php parkgolf_event_card(get_the_ID()); ?>
+                        <?php endwhile; wp_reset_postdata(); ?>
+                    <?php else: ?>
+                        <p class="no-content">등록된 대회 일정이 없습니다.</p>
+                    <?php endif; ?>
+                    </div>
+                </section>
+
+            </main><!-- /main-content -->
+
+            <!-- 사이드바 -->
+            <aside class="sidebar" id="sidebar">
+
+                <!-- 쿠팡 파트너스 사이드 배너 -->
+                <?php parkgolf_coupang_banner('sidebar'); ?>
+
+                <?php if (is_active_sidebar('sidebar-main')): ?>
+                    <?php dynamic_sidebar('sidebar-main'); ?>
+                <?php else: ?>
+
+                <!-- 인기 파크골프장 -->
+                <div class="sidebar-widget">
+                    <div class="widget-title"><i class="fas fa-star"></i> 인기 파크골프장 TOP 5</div>
+                    <?php
+                    $popular_courses = new WP_Query(array(
+                        'post_type'      => 'parkgolf_course',
+                        'posts_per_page' => 5,
+                        'meta_key'       => 'post_views_count',
+                        'orderby'        => 'meta_value_num',
+                        'order'          => 'DESC',
+                    ));
+                    ?>
+                    <ul class="popular-list">
+                    <?php if ($popular_courses->have_posts()):
+                        $rank = 1;
+                        while ($popular_courses->have_posts()): $popular_courses->the_post();
+                            $rank_class = $rank <= 3 ? "rank-{$rank}" : 'rank';
+                            $holes = get_post_meta(get_the_ID(), 'course_holes', true);
+                            $fee   = get_post_meta(get_the_ID(), 'course_fee', true);
+                            $regions = get_the_terms(get_the_ID(), 'region');
+                            $region_name = ($regions && !is_wp_error($regions)) ? $regions[0]->name : '';
+                    ?>
+                    <li>
+                        <span class="rank <?php echo esc_attr($rank_class); ?>"><?php echo $rank; ?></span>
+                        <div class="popular-info">
+                            <a href="<?php the_permalink(); ?>"><?php the_title(); ?> <?php if($region_name) echo '(' . esc_html($region_name) . ')'; ?></a>
+                            <span><?php echo $holes ? $holes . '홀 · ' : ''; ?><?php echo $fee ?: ''; ?></span>
+                        </div>
+                    </li>
+                    <?php $rank++; endwhile; wp_reset_postdata();
+                    else: ?>
+                        <li><p style="padding:10px;color:#999;font-size:13px">등록된 파크골프장이 없습니다</p></li>
+                    <?php endif; ?>
+                    </ul>
+                </div>
+
+                <!-- 애드센스 영역 -->
+                <div class="sidebar-widget adsense-widget">
+                    <div class="widget-title">광고</div>
+                    <?php parkgolf_adsense(); ?>
+                </div>
+
+                <!-- 예약 바로가기 -->
+                <div class="sidebar-widget">
+                    <div class="widget-title"><i class="fas fa-calendar-check"></i> 예약 바로가기</div>
+                    <div class="quick-links">
+                        <a href="https://yeyak.seoul.go.kr" target="_blank" rel="noopener" class="quick-link-btn">
+                            <i class="fas fa-external-link-alt"></i> 서울시 공공예약
+                        </a>
+                        <a href="https://www.reservation.go.kr" target="_blank" rel="noopener" class="quick-link-btn">
+                            <i class="fas fa-external-link-alt"></i> 공공서비스 예약
+                        </a>
+                        <a href="https://reservation.e-gen.or.kr" target="_blank" rel="noopener" class="quick-link-btn">
+                            <i class="fas fa-external-link-alt"></i> 국민체육센터 예약
+                        </a>
+                    </div>
+                </div>
+
+                <?php endif; ?>
+            </aside>
+
+        </div><!-- /content-sidebar-wrap -->
+    </div>
+</div><!-- /main-content-area -->
+
+<!-- 파크골프 용품 추천 (쿠팡 파트너스) -->
+<section class="product-section">
+    <div class="container">
+        <div class="section-header">
+            <h2><i class="fas fa-shopping-bag"></i> 파크골프 용품 추천</h2>
+            <p class="coupang-disclaimer">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+        </div>
+        <?php
+        $coupang_url = get_option('parkgolf_coupang_url', 'https://link.coupang.com/a/YOUR_CODE');
+        $products = array(
+            array('fas fa-golf-ball','파크골프 클럽 세트','입문용 풀세트'),
+            array('fas fa-circle','파크골프 공','공식 규격 볼'),
+            array('fas fa-tshirt','파크골프 의류','기능성 골프웨어'),
+            array('fas fa-suitcase','파크골프 가방','클럽 캐리어백'),
+        );
+        ?>
+        <div class="product-grid">
+            <?php foreach ($products as $p): ?>
+            <div class="product-card">
+                <a href="<?php echo esc_url($coupang_url); ?>" target="_blank" rel="noopener sponsored">
+                    <div class="product-img"><i class="<?php echo esc_attr($p[0]); ?>"></i></div>
+                    <div class="product-info">
+                        <h4><?php echo esc_html($p[1]); ?></h4>
+                        <p><?php echo esc_html($p[2]); ?></p>
+                        <span class="product-price">최저가 확인 →</span>
+                    </div>
+                </a>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+
+<!-- 하단 쿠팡 배너 -->
+<?php parkgolf_coupang_banner('horizontal'); ?>
+
+
+<?php else: ?>
+<!-- ============================================================
+     블로그 목록 페이지 (뉴스 아카이브)
+     ============================================================ -->
+<div class="main-content-area">
+    <div class="container">
+        <div class="page-banner-inner">
+            <h1><i class="fas fa-newspaper"></i> 뉴스 / 소식</h1>
+        </div>
+        <div class="content-sidebar-wrap">
+            <main class="main-content">
+                <div class="news-grid">
+                <?php if (have_posts()): ?>
+                    <?php $is_first = true; while (have_posts()): the_post(); ?>
+
+                    <?php if ($is_first): $is_first = false; ?>
+                    <article class="news-card featured">
+                        <div class="news-image">
+                            <?php if (has_post_thumbnail()): ?>
+                                <a href="<?php the_permalink(); ?>"><?php the_post_thumbnail('parkgolf-card'); ?></a>
+                            <?php else: ?>
+                                <div class="news-img-placeholder"><i class="fas fa-golf-ball"></i></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="news-body">
+                            <h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
+                            <p><?php echo wp_trim_words(get_the_excerpt(), 30); ?></p>
+                            <div class="news-meta">
+                                <span><i class="fas fa-calendar"></i> <?php echo get_the_date('Y.m.d'); ?></span>
+                            </div>
+                        </div>
+                    </article>
+                    <?php else: ?>
+                    <article class="news-card">
+                        <div class="news-body">
+                            <h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
+                            <div class="news-meta">
+                                <span><i class="fas fa-calendar"></i> <?php echo get_the_date('Y.m.d'); ?></span>
+                            </div>
+                        </div>
+                    </article>
+                    <?php endif; ?>
+
+                    <?php endwhile; ?>
+
+                    <div class="pagination">
+                        <?php
+                        the_posts_pagination(array(
+                            'prev_text' => '<i class="fas fa-chevron-left"></i> 이전',
+                            'next_text' => '다음 <i class="fas fa-chevron-right"></i>',
+                            'class'     => 'pagination',
+                        ));
+                        ?>
+                    </div>
+
+                <?php else: ?>
+                    <p class="no-content">등록된 뉴스가 없습니다.</p>
+                <?php endif; ?>
+                </div>
+            </main>
+
+            <aside class="sidebar">
+                <?php if (is_active_sidebar('sidebar-main')): ?>
+                    <?php dynamic_sidebar('sidebar-main'); ?>
+                <?php else: ?>
+                    <?php parkgolf_coupang_banner('sidebar'); ?>
+                    <div class="sidebar-widget adsense-widget">
+                        <div class="widget-title">광고</div>
+                        <?php parkgolf_adsense(); ?>
+                    </div>
+                <?php endif; ?>
+            </aside>
+        </div>
+    </div>
+</div>
+
+<?php endif; // end is_front_page ?>
+
+<?php get_footer(); ?>

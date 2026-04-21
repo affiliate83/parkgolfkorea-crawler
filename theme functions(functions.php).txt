@@ -1,0 +1,728 @@
+<?php
+/**
+ * 파크골프 코리아 테마 functions.php
+ */
+
+// ============================================================
+// 1. 테마 기본 기능 설정
+// ============================================================
+function parkgolf_setup() {
+    load_theme_textdomain('parkgolf-korea', get_template_directory() . '/languages');
+    add_theme_support('title-tag');
+    add_theme_support('post-thumbnails');
+    set_post_thumbnail_size(800, 500, true);
+    add_image_size('parkgolf-card', 400, 250, true);
+    add_image_size('parkgolf-wide', 1200, 600, true);
+    add_theme_support('html5', array('search-form', 'comment-form', 'comment-list', 'gallery', 'caption', 'script', 'style'));
+    add_theme_support('custom-logo', array('height' => 60, 'width' => 200, 'flex-height' => true, 'flex-width' => true));
+    add_theme_support('automatic-feed-links');
+    register_nav_menus(array(
+        'primary' => '메인 네비게이션',
+        'footer'  => '푸터 메뉴',
+        'mobile'  => '모바일 메뉴',
+    ));
+}
+add_action('after_setup_theme', 'parkgolf_setup');
+
+// ============================================================
+// 2. CSS / JS 불러오기
+// ============================================================
+function parkgolf_scripts() {
+    $version = '1.0.2';
+
+    wp_enqueue_style('google-fonts',
+        'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap',
+        array(), null);
+    wp_enqueue_style('font-awesome',
+        'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css',
+        array(), '6.4.0');
+    wp_enqueue_style('parkgolf-style',
+        get_template_directory_uri() . '/assets/css/style.css',
+        array('google-fonts', 'font-awesome'), $version);
+    wp_enqueue_style('parkgolf-extra',
+        get_template_directory_uri() . '/assets/css/theme-extra.css',
+        array('parkgolf-style'), $version);
+
+    if (is_page_template('page-courses.php') ||
+        is_tax('region') ||
+        is_singular('parkgolf_course')) {
+        wp_enqueue_style('parkgolf-courses',
+            get_template_directory_uri() . '/assets/css/courses.css',
+            array('parkgolf-style'), $version);
+    }
+
+    wp_enqueue_script('parkgolf-main',
+        get_template_directory_uri() . '/assets/js/main.js',
+        array('jquery'), $version, true);
+
+    if (is_page_template('page-courses.php') ||
+        is_page('골프장-정보') ||
+        is_tax('region')) {
+        wp_enqueue_script('parkgolf-courses',
+            get_template_directory_uri() . '/assets/js/courses.js',
+            array('parkgolf-main'), $version, true);
+    }
+
+    if (is_singular() && comments_open() && get_option('thread_comments')) {
+        wp_enqueue_script('comment-reply');
+    }
+
+    wp_localize_script('parkgolf-main', 'parkgolfData', array(
+        'ajaxUrl'  => admin_url('admin-ajax.php'),
+        'siteUrl'  => get_site_url(),
+        'themeUrl' => get_template_directory_uri(),
+        'nonce'    => wp_create_nonce('parkgolf_nonce'),
+    ));
+}
+add_action('wp_enqueue_scripts', 'parkgolf_scripts');
+
+// ============================================================
+// 3. 위젯 영역 등록
+// ============================================================
+function parkgolf_widgets_init() {
+    register_sidebar(array(
+        'name'          => '메인 사이드바',
+        'id'            => 'sidebar-main',
+        'before_widget' => '<div class="sidebar-widget %2$s">',
+        'after_widget'  => '</div>',
+        'before_title'  => '<div class="widget-title">',
+        'after_title'   => '</div>',
+    ));
+    register_sidebar(array(
+        'name'          => '골프장 사이드바',
+        'id'            => 'sidebar-courses',
+        'before_widget' => '<div class="sidebar-widget %2$s">',
+        'after_widget'  => '</div>',
+        'before_title'  => '<div class="widget-title">',
+        'after_title'   => '</div>',
+    ));
+    for ($i = 1; $i <= 4; $i++) {
+        register_sidebar(array(
+            'name'          => "푸터 {$i}열",
+            'id'            => "footer-{$i}",
+            'before_widget' => '<div class="footer-widget %2$s">',
+            'after_widget'  => '</div>',
+            'before_title'  => '<h4>',
+            'after_title'   => '</h4>',
+        ));
+    }
+}
+add_action('widgets_init', 'parkgolf_widgets_init');
+
+// ============================================================
+// 4. 커스텀 포스트 타입 등록
+// ============================================================
+function parkgolf_register_post_types() {
+    register_post_type('parkgolf_course', array(
+        'labels' => array(
+            'name'          => '파크골프장',
+            'singular_name' => '파크골프장',
+            'add_new'       => '새 골프장 추가',
+            'add_new_item'  => '새 파크골프장 추가',
+            'edit_item'     => '파크골프장 편집',
+            'view_item'     => '파크골프장 보기',
+            'search_items'  => '파크골프장 검색',
+            'not_found'     => '파크골프장을 찾을 수 없습니다',
+            'menu_name'     => '파크골프장 관리',
+        ),
+        'public'        => true,
+        'has_archive'   => false,
+        'rewrite'       => array('slug' => 'parkgolf'),
+        'menu_icon'     => 'dashicons-location',
+        'menu_position' => 5,
+        'supports'      => array('title', 'editor', 'thumbnail', 'excerpt', 'custom-fields'),
+        'show_in_rest'  => true,
+        'rest_base'     => 'parkgolf_course',
+    ));
+
+    register_post_type('parkgolf_event', array(
+        'labels' => array(
+            'name'          => '대회/이벤트',
+            'singular_name' => '대회/이벤트',
+            'add_new'       => '새 대회 추가',
+            'menu_name'     => '대회/이벤트 관리',
+        ),
+        'public'        => true,
+        'has_archive'   => true,
+        'rewrite'       => array('slug' => 'events'),
+        'menu_icon'     => 'dashicons-awards',
+        'menu_position' => 6,
+        'supports'      => array('title', 'editor', 'thumbnail', 'excerpt', 'custom-fields'),
+        'show_in_rest'  => true,
+    ));
+}
+add_action('init', 'parkgolf_register_post_types');
+
+function parkgolf_register_taxonomies() {
+    register_taxonomy('region', array('parkgolf_course'), array(
+        'labels' => array(
+            'name'          => '지역',
+            'singular_name' => '지역',
+            'menu_name'     => '지역 관리',
+        ),
+        'hierarchical'      => true,
+        'rewrite'           => array('slug' => 'region'),
+        'show_in_rest'      => true,
+        'show_admin_column' => true,
+    ));
+    register_taxonomy('event_type', array('parkgolf_event'), array(
+        'labels' => array(
+            'name'          => '대회 종류',
+            'singular_name' => '대회 종류',
+        ),
+        'hierarchical'      => true,
+        'rewrite'           => array('slug' => 'event-type'),
+        'show_in_rest'      => true,
+        'show_admin_column' => true,
+    ));
+}
+add_action('init', 'parkgolf_register_taxonomies');
+
+// ============================================================
+// 5. 커스텀 메타박스
+// ============================================================
+function parkgolf_add_meta_boxes() {
+    add_meta_box('course_details', '파크골프장 상세 정보', 'parkgolf_course_meta_callback', 'parkgolf_course', 'normal', 'high');
+    add_meta_box('event_details',  '대회/이벤트 상세 정보', 'parkgolf_event_meta_callback',  'parkgolf_event',  'normal', 'high');
+}
+add_action('add_meta_boxes', 'parkgolf_add_meta_boxes');
+
+function parkgolf_course_meta_callback($post) {
+    wp_nonce_field('parkgolf_course_meta', 'parkgolf_nonce');
+    $fields = array(
+        'course_address'         => '주소',
+        'course_holes'           => '홀 수 (예: 18, 27, 36)',
+        'course_distance'        => '총 거리 (예: 2,800m)',
+        'course_hours'           => '운영시간 (예: 06:00~18:00)',
+        'course_fee'             => '이용요금 (무료/유료/금액)',
+        'course_phone'           => '전화번호',
+        'course_reservation'     => '예약방법',
+        'course_reservation_url' => '예약 URL',
+        'course_parking'         => '주차 안내',
+        'course_facilities'      => '편의시설 (쉼표로 구분)',
+        'course_map_lat'         => '위도 (지도용)',
+        'course_map_lng'         => '경도 (지도용)',
+    );
+    echo '<table class="form-table">';
+    foreach ($fields as $key => $label) {
+        $value = get_post_meta($post->ID, $key, true);
+        echo "<tr><th>{$label}</th><td>";
+        if ($key === 'course_reservation') {
+            echo "<textarea name='{$key}' rows='3' style='width:100%'>" . esc_textarea($value) . "</textarea>";
+        } else {
+            echo "<input type='text' name='{$key}' value='" . esc_attr($value) . "' style='width:100%'>";
+        }
+        echo "</td></tr>";
+    }
+    echo '</table>';
+}
+
+function parkgolf_event_meta_callback($post) {
+    wp_nonce_field('parkgolf_event_meta', 'parkgolf_event_nonce');
+    $fields = array(
+        'event_date_start' => '대회 시작일 (YYYY-MM-DD)',
+        'event_date_end'   => '대회 종료일 (YYYY-MM-DD)',
+        'event_location'   => '개최 장소',
+        'event_capacity'   => '정원 (예: 200명)',
+        'event_fee'        => '참가비',
+        'event_organizer'  => '주최/주관',
+        'event_contact'    => '문의처',
+        'event_apply_url'  => '접수 URL',
+        'event_status'     => '접수 상태 (접수중/마감/예정)',
+        'event_prize'      => '시상 내역',
+    );
+    echo '<table class="form-table">';
+    foreach ($fields as $key => $label) {
+        $value = get_post_meta($post->ID, $key, true);
+        echo "<tr><th>{$label}</th><td>";
+        echo "<input type='text' name='{$key}' value='" . esc_attr($value) . "' style='width:100%'>";
+        echo "</td></tr>";
+    }
+    echo '</table>';
+}
+
+function parkgolf_save_meta($post_id) {
+    if (!isset($_POST['parkgolf_nonce']) && !isset($_POST['parkgolf_event_nonce'])) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('edit_post', $post_id)) return;
+    $all_fields = array(
+        'course_address', 'course_holes', 'course_distance', 'course_hours',
+        'course_fee', 'course_phone', 'course_reservation', 'course_reservation_url',
+        'course_parking', 'course_facilities', 'course_map_lat', 'course_map_lng',
+        'event_date_start', 'event_date_end', 'event_location', 'event_capacity',
+        'event_fee', 'event_organizer', 'event_contact', 'event_apply_url',
+        'event_status', 'event_prize',
+    );
+    foreach ($all_fields as $field) {
+        if (isset($_POST[$field])) {
+            update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
+        }
+    }
+}
+add_action('save_post', 'parkgolf_save_meta');
+
+// ============================================================
+// 6. 헬퍼 함수 - 골프장 카드
+// ============================================================
+function parkgolf_course_card($post_id) {
+    $title       = get_the_title($post_id);
+    $link        = get_permalink($post_id);
+    $fee         = get_post_meta($post_id, 'course_fee', true);
+    $reservation = get_post_meta($post_id, 'course_reservation', true);
+    $address     = get_post_meta($post_id, 'course_address', true);
+    $holes       = get_post_meta($post_id, 'course_holes', true);
+    $hours       = get_post_meta($post_id, 'course_hours', true);
+
+    $regions     = get_the_terms($post_id, 'region');
+    $region_name = (!empty($regions) && !is_wp_error($regions)) ? $regions[0]->name : '';
+    $region_slug = (!empty($regions) && !is_wp_error($regions)) ? $regions[0]->slug : '';
+
+    $fee_label = (!empty($fee) && strpos($fee, '무료') !== false) ? '무료' : '유료';
+    $fee_class = (!empty($fee) && strpos($fee, '무료') !== false) ? 'free' : 'paid';
+
+    $thumbnail = get_the_post_thumbnail($post_id, 'parkgolf-card');
+    ?>
+    <div class="course-card" data-region="<?php echo esc_attr($region_slug); ?>">
+        <a href="<?php echo esc_url($link); ?>" style="display:block;text-decoration:none;color:inherit;height:100%;">
+            <div class="course-card-header">
+                <span class="badge <?php echo esc_attr($fee_class); ?>"><?php echo esc_html($fee_label); ?></span>
+                <?php if ($region_name): ?>
+                    <span class="badge region"><?php echo esc_html($region_name); ?></span>
+                <?php endif; ?>
+                <?php if ($thumbnail): ?>
+                    <?php echo $thumbnail; ?>
+                <?php else: ?>
+                    <div class="course-img-placeholder">⛳</div>
+                <?php endif; ?>
+            </div>
+            <div class="course-card-body">
+                <h3 class="course-title"><?php echo esc_html($title); ?></h3>
+                <?php if ($address): ?>
+                    <p class="course-address">
+                        <i class="fas fa-map-marker-alt"></i> <?php echo esc_html($address); ?>
+                    </p>
+                <?php endif; ?>
+                <div class="course-specs">
+                    <?php if ($holes): ?>
+                        <span><i class="fas fa-golf-ball"></i> <?php echo esc_html($holes); ?>홀</span>
+                    <?php endif; ?>
+                    <?php if ($fee): ?>
+                        <span><i class="fas fa-won-sign"></i> <?php echo esc_html($fee_label); ?></span>
+                    <?php endif; ?>
+                    <?php if ($hours): ?>
+                        <span><i class="fas fa-clock"></i> <?php echo esc_html($hours); ?></span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($reservation): ?>
+                    <div class="course-reservation">
+                        <span class="res-label">예약방법</span>
+                        <span class="res-value"><?php echo esc_html($reservation); ?></span>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </a>
+    </div>
+    <?php
+}
+
+// ============================================================
+// 7. 헬퍼 함수 - 이벤트 카드
+// ============================================================
+function parkgolf_event_card($post_id = null) {
+    if (!$post_id) $post_id = get_the_ID();
+    $title      = get_the_title($post_id);
+    $link       = get_permalink($post_id);
+    $date_start = get_post_meta($post_id, 'event_date_start', true);
+    $location   = get_post_meta($post_id, 'event_location', true);
+    $capacity   = get_post_meta($post_id, 'event_capacity', true);
+    $apply_url  = get_post_meta($post_id, 'event_apply_url', true);
+    $status     = get_post_meta($post_id, 'event_status', true) ?: '예정';
+
+    $month = $date_start ? date('m월', strtotime($date_start)) : '';
+    $day   = $date_start ? date('d',   strtotime($date_start)) : '';
+    $year  = $date_start ? date('Y',   strtotime($date_start)) : '';
+
+    $status_class = array('접수중' => 'badge-open', '마감' => 'badge-closed', '예정' => 'badge-soon');
+    $badge_class  = $status_class[$status] ?? 'badge-soon';
+    ?>
+    <div class="schedule-item">
+        <div class="schedule-date">
+            <span class="month"><?php echo esc_html($month); ?></span>
+            <span class="day"><?php echo esc_html($day); ?></span>
+            <span class="year"><?php echo esc_html($year); ?></span>
+        </div>
+        <div class="schedule-info">
+            <h3><a href="<?php echo esc_url($link); ?>"><?php echo esc_html($title); ?></a></h3>
+            <div class="schedule-meta">
+                <?php if ($location): ?>
+                    <span><i class="fas fa-map-marker-alt"></i> <?php echo esc_html($location); ?></span>
+                <?php endif; ?>
+                <?php if ($capacity): ?>
+                    <span><i class="fas fa-users"></i> <?php echo esc_html($capacity); ?></span>
+                <?php endif; ?>
+                <span class="badge <?php echo esc_attr($badge_class); ?>"><?php echo esc_html($status); ?></span>
+            </div>
+        </div>
+        <a href="<?php echo esc_url($apply_url ?: $link); ?>"
+           <?php echo $apply_url ? 'target="_blank" rel="noopener"' : ''; ?>
+           class="schedule-btn">상세보기</a>
+    </div>
+    <?php
+}
+
+// ============================================================
+// 8. 광고 함수
+// ============================================================
+function parkgolf_coupang_banner($type = 'horizontal') {
+    $coupang_url = get_option('parkgolf_coupang_url', 'https://link.coupang.com/a/YOUR_CODE');
+    if ($type === 'horizontal'): ?>
+        <div class="ad-banner-section">
+            <div class="coupang-banner-wrap">
+                <span class="ad-label">AD</span>
+                <a href="<?php echo esc_url($coupang_url); ?>" target="_blank" rel="noopener sponsored">
+                    <div class="banner-mock">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>파크골프 용품 쿠팡에서 최저가로!</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    <?php elseif ($type === 'sidebar'): ?>
+        <div class="sidebar-widget ad-widget">
+            <div class="widget-title"><span class="ad-label-small">AD</span> 추천 상품</div>
+            <a href="<?php echo esc_url($coupang_url); ?>" target="_blank" rel="noopener sponsored">
+                <div class="side-banner-mock">
+                    <i class="fas fa-shopping-bag"></i>
+                    <p>파크골프 용품 최저가</p>
+                    <span>쿠팡 파트너스</span>
+                </div>
+            </a>
+            <p class="coupang-notice">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+        </div>
+    <?php endif;
+}
+
+function parkgolf_adsense($slot = '') {
+    $adsense_code = get_option('parkgolf_adsense_code', '');
+    if ($adsense_code) {
+        echo $adsense_code;
+    } else {
+        echo '<div class="adsense-placeholder"><p>📢 Google 애드센스<br>승인 후 광고가 표시됩니다</p></div>';
+    }
+}
+
+// ============================================================
+// 9. 제목 / 발췌문
+// ============================================================
+function parkgolf_title() {
+    if (is_front_page())   { echo bloginfo('name'); }
+    elseif (is_singular()) { the_title(); }
+    elseif (is_archive())  { the_archive_title(); }
+    elseif (is_search())   { echo '"' . get_search_query() . '" 검색 결과'; }
+    else                   { echo bloginfo('name'); }
+}
+
+function parkgolf_excerpt_length($length) { return 30; }
+add_filter('excerpt_length', 'parkgolf_excerpt_length');
+
+function parkgolf_excerpt_more($more) { return '...'; }
+add_filter('excerpt_more', 'parkgolf_excerpt_more');
+
+// ============================================================
+// 10. 관리자 설정 페이지
+// ============================================================
+function parkgolf_admin_menu() {
+    add_options_page('파크골프 코리아 설정', '파크골프 설정', 'manage_options', 'parkgolf-settings', 'parkgolf_settings_page');
+}
+add_action('admin_menu', 'parkgolf_admin_menu');
+
+function parkgolf_settings_page() {
+    if (isset($_POST['parkgolf_save'])) {
+        check_admin_referer('parkgolf_settings');
+        update_option('parkgolf_coupang_url',      sanitize_url($_POST['coupang_url']));
+        update_option('parkgolf_adsense_code',     wp_kses_post($_POST['adsense_code']));
+        update_option('parkgolf_site_description', sanitize_text_field($_POST['site_description']));
+        echo '<div class="updated"><p>✅ 설정이 저장되었습니다.</p></div>';
+    }
+    $coupang_url  = get_option('parkgolf_coupang_url', '');
+    $adsense_code = get_option('parkgolf_adsense_code', '');
+    $description  = get_option('parkgolf_site_description', '전국 파크골프장 정보 포털');
+    ?>
+    <div class="wrap">
+        <h1>⛳ 파크골프 코리아 설정</h1>
+        <form method="post">
+            <?php wp_nonce_field('parkgolf_settings'); ?>
+            <table class="form-table">
+                <tr>
+                    <th>사이트 소개</th>
+                    <td><input type="text" name="site_description" value="<?php echo esc_attr($description); ?>" style="width:100%"></td>
+                </tr>
+                <tr>
+                    <th>쿠팡 파트너스 URL</th>
+                    <td>
+                        <input type="url" name="coupang_url" value="<?php echo esc_attr($coupang_url); ?>" style="width:100%" placeholder="https://link.coupang.com/a/XXXXX">
+                        <p class="description">쿠팡 파트너스에서 발급받은 링크를 입력하세요.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Google 애드센스 코드</th>
+                    <td>
+                        <textarea name="adsense_code" rows="6" style="width:100%;font-family:monospace"><?php echo esc_textarea($adsense_code); ?></textarea>
+                        <p class="description">애드센스 승인 후 발급받은 광고 코드를 입력하세요.</p>
+                    </td>
+                </tr>
+            </table>
+            <p><input type="submit" name="parkgolf_save" class="button-primary" value="설정 저장"></p>
+        </form>
+        <hr>
+        <h2>📋 사용 안내</h2>
+        <ul style="list-style:disc;padding-left:20px;line-height:2">
+            <li>파크골프장 추가: 관리자 → <strong>파크골프장 관리</strong> → 새 골프장 추가</li>
+            <li>대회 추가: 관리자 → <strong>대회/이벤트 관리</strong> → 새 대회 추가</li>
+            <li>메뉴 설정: 외모 → <strong>메뉴</strong>에서 네비게이션 구성</li>
+            <li>위젯 설정: 외모 → <strong>위젯</strong>에서 사이드바 구성</li>
+        </ul>
+    </div>
+    <?php
+}
+
+// ============================================================
+// 11. 네비게이션 워커
+// ============================================================
+if (!class_exists('Parkgolf_Nav_Walker')) {
+    class Parkgolf_Nav_Walker extends Walker_Nav_Menu {
+        function start_lvl(&$output, $depth = 0, $args = null) {
+            $output .= '<ul class="dropdown">';
+        }
+        function end_lvl(&$output, $depth = 0, $args = null) {
+            $output .= '</ul>';
+        }
+        function start_el(&$output, $item, $depth = 0, $args = null, $id = 0) {
+            $classes      = empty($item->classes) ? array() : (array) $item->classes;
+            $has_children = in_array('menu-item-has-children', $classes);
+            $is_active    = in_array('current-menu-item', $classes) || in_array('current-menu-ancestor', $classes);
+            $li_class     = array();
+            if ($has_children) $li_class[] = 'has-dropdown';
+            if ($is_active)    $li_class[] = 'active';
+            $output .= '<li' . ($li_class ? ' class="' . implode(' ', $li_class) . '"' : '') . '>';
+            $output .= '<a href="' . esc_url($item->url) . '"' . ($is_active ? ' class="active"' : '') . '>';
+            $output .= esc_html($item->title);
+            if ($has_children && $depth === 0) {
+                $output .= ' <i class="fas fa-chevron-down"></i>';
+            }
+            $output .= '</a>';
+        }
+        function end_el(&$output, $item, $depth = 0, $args = null) {
+            $output .= '</li>';
+        }
+    }
+}
+
+// ============================================================
+// 12. 보안
+// ============================================================
+remove_action('wp_head', 'wp_generator');
+remove_action('wp_head', 'wlwmanifest_link');
+remove_action('wp_head', 'rsd_link');
+
+// ============================================================
+// 13. 구조화 데이터 (Schema.org)
+// ============================================================
+function parkgolf_schema_markup() {
+
+    if (is_singular('parkgolf_course')) {
+        $post_id  = get_the_ID();
+        $title    = get_the_title($post_id);
+        $address  = get_post_meta($post_id, 'course_address', true);
+        $phone    = get_post_meta($post_id, 'course_phone', true);
+        $hours    = get_post_meta($post_id, 'course_hours', true);
+        $fee      = get_post_meta($post_id, 'course_fee', true);
+        $lat      = get_post_meta($post_id, 'course_map_lat', true);
+        $lng      = get_post_meta($post_id, 'course_map_lng', true);
+        $url      = get_permalink($post_id);
+        $regions  = get_the_terms($post_id, 'region');
+        $region   = (!empty($regions) && !is_wp_error($regions)) ? $regions[0]->name : '';
+
+        $address_parts = explode(' ', $address);
+        $city     = isset($address_parts[0]) ? $address_parts[0] : '대한민국';
+        $district = isset($address_parts[1]) ? $address_parts[1] : '';
+
+        $schema = array(
+            '@context'    => 'https://schema.org',
+            '@type'       => 'SportsActivityLocation',
+            'name'        => $title,
+            'description' => $title . ' - ' . $region . ' 파크골프장. 주소: ' . $address,
+            'url'         => $url,
+            'sport'       => '파크골프',
+            'telephone'   => $phone ?: '',
+        );
+        if ($address) {
+            $schema['address'] = array(
+                '@type'           => 'PostalAddress',
+                'streetAddress'   => $address,
+                'addressLocality' => $district ?: $city,
+                'addressRegion'   => $city,
+                'addressCountry'  => 'KR',
+            );
+        }
+        if ($lat && $lng) {
+            $schema['geo'] = array(
+                '@type'     => 'GeoCoordinates',
+                'latitude'  => $lat,
+                'longitude' => $lng,
+            );
+        }
+        if ($hours) $schema['openingHours'] = $hours;
+        if ($fee)   $schema['priceRange']   = $fee;
+        if (has_post_thumbnail($post_id)) {
+            $img = get_the_post_thumbnail_url($post_id, 'large');
+            if ($img) $schema['image'] = $img;
+        }
+        echo '<script type="application/ld+json">'
+            . json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+            . '</script>' . "\n";
+    }
+
+    if (is_page('courses')) {
+        $schema = array(
+            '@context'    => 'https://schema.org',
+            '@type'       => 'CollectionPage',
+            'name'        => '전국 파크골프장 검색 | 파크골프 코리아',
+            'description' => '전국 파크골프장 정보를 한눈에! 지역별 검색, 예약방법, 이용요금, 운영시간을 확인하세요.',
+            'url'         => home_url('/courses/'),
+            'provider'    => array(
+                '@type' => 'Organization',
+                'name'  => '파크골프 코리아',
+                'url'   => home_url(),
+            ),
+        );
+        echo '<script type="application/ld+json">'
+            . json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+            . '</script>' . "\n";
+    }
+
+    if (is_front_page()) {
+        $schema = array(
+            '@context'    => 'https://schema.org',
+            '@type'       => 'WebSite',
+            'name'        => '파크골프 코리아',
+            'url'         => home_url(),
+            'description' => '전국 파크골프장 정보 포털. 지역별 골프장 검색, 예약방법, 대회일정 안내.',
+            'potentialAction' => array(
+                '@type'       => 'SearchAction',
+                'target'      => array(
+                    '@type'       => 'EntryPoint',
+                    'urlTemplate' => home_url('/courses/?s={search_term_string}'),
+                ),
+                'query-input' => 'required name=search_term_string',
+            ),
+            'publisher' => array(
+                '@type' => 'Organization',
+                'name'  => '파크골프 코리아',
+                'url'   => home_url(),
+                'logo'  => array(
+                    '@type' => 'ImageObject',
+                    'url'   => get_template_directory_uri() . '/assets/images/logo.png',
+                ),
+            ),
+        );
+        echo '<script type="application/ld+json">'
+            . json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+            . '</script>' . "\n";
+    }
+
+    if (is_singular('post')) {
+        $post_id = get_the_ID();
+        $schema  = array(
+            '@context'      => 'https://schema.org',
+            '@type'         => 'Article',
+            'headline'      => get_the_title($post_id),
+            'description'   => get_the_excerpt($post_id),
+            'url'           => get_permalink($post_id),
+            'datePublished' => get_the_date('c', $post_id),
+            'dateModified'  => get_the_modified_date('c', $post_id),
+            'author'        => array('@type' => 'Organization', 'name' => '파크골프 코리아'),
+            'publisher'     => array('@type' => 'Organization', 'name' => '파크골프 코리아', 'url' => home_url()),
+        );
+        if (has_post_thumbnail($post_id)) {
+            $img = get_the_post_thumbnail_url($post_id, 'large');
+            if ($img) $schema['image'] = $img;
+        }
+        echo '<script type="application/ld+json">'
+            . json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+            . '</script>' . "\n";
+    }
+}
+add_action('wp_head', 'parkgolf_schema_markup');
+
+function parkgolf_seo_meta() {
+    if (!is_singular('parkgolf_course')) return;
+    if (defined('WPSEO_VERSION')) {
+        $post_id = get_the_ID();
+        $title   = get_the_title($post_id);
+        $address = get_post_meta($post_id, 'course_address', true);
+        $holes   = get_post_meta($post_id, 'course_holes', true);
+        $fee     = get_post_meta($post_id, 'course_fee', true);
+        $phone   = get_post_meta($post_id, 'course_phone', true);
+        $regions = get_the_terms($post_id, 'region');
+        $region  = (!empty($regions) && !is_wp_error($regions)) ? $regions[0]->name : '';
+
+        $parts = array();
+        if ($region)  $parts[] = $region . ' 위치';
+        if ($address) $parts[] = $address;
+        if ($holes)   $parts[] = $holes . '홀';
+        if ($fee)     $parts[] = '이용요금 ' . $fee;
+        if ($phone)   $parts[] = '문의 ' . $phone;
+        $parts[] = '예약방법 및 운영시간 안내';
+        $desc = $title . ' - ' . implode(', ', $parts);
+        $desc = mb_substr($desc, 0, 155);
+
+        add_filter('wpseo_title',    function() use ($title) { return $title . ' - 위치·예약·요금 | 파크골프 코리아'; });
+        add_filter('wpseo_metadesc', function() use ($desc)  { return $desc; });
+    }
+}
+add_action('wp_head', 'parkgolf_seo_meta', 1);
+
+// ============================================================
+// 14. ★ REST API - 메타 필드 노출 등록 (지역 탭 작동 핵심)
+// ============================================================
+function parkgolf_register_rest_meta_fields() {
+
+    // 파크골프장 메타 필드 → REST API 에 노출
+    $course_fields = array(
+        'course_address', 'course_holes', 'course_distance',
+        'course_hours',   'course_fee',   'course_phone',
+        'course_reservation', 'course_reservation_url',
+        'course_parking', 'course_facilities',
+        'course_map_lat', 'course_map_lng',
+    );
+    foreach ($course_fields as $key) {
+        register_post_meta('parkgolf_course', $key, array(
+            'show_in_rest'  => true,
+            'single'        => true,
+            'type'          => 'string',
+            'auth_callback' => function() { return current_user_can('edit_posts'); },
+        ));
+    }
+}
+add_action('init', 'parkgolf_register_rest_meta_fields');
+
+// ============================================================
+// 15. ★ REST API - region taxonomy 슬러그 필터 지원
+//     courses.js 에서 ?region=seoul,gyeonggi 형태로 쿼리 가능
+// ============================================================
+function parkgolf_rest_region_filter( $args, $request ) {
+    if ( ! empty( $request['region'] ) ) {
+        $slugs = array_map( 'sanitize_text_field', explode( ',', $request['region'] ) );
+        $args['tax_query'] = array(
+            array(
+                'taxonomy' => 'region',
+                'field'    => 'slug',
+                'terms'    => $slugs,
+                'operator' => 'IN',
+            ),
+        );
+    }
+    return $args;
+}
+add_filter( 'rest_parkgolf_course_query', 'parkgolf_rest_region_filter', 10, 2 );
