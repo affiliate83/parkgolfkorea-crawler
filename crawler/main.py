@@ -1,7 +1,7 @@
 import time
 from utils import logger, mark_published
 from sources import news, events
-from wp_api import create_wp_post
+from wp_api import create_wp_post, post_exists
 
 
 def run():
@@ -29,6 +29,10 @@ def run():
     success_count = 0
     for item in all_data:
         logger.info(f" -> 발행 시도: [{item['post_type']}] {item['title'][:40]}")
+        if post_exists(item['title'], item['post_type']):
+            logger.info(f"  [WP 중복 확인] 이미 존재하는 글, 건너뜀")
+            mark_published(item['title'], item.get('link', ''))
+            continue
         post_id = create_wp_post(
             title=item['title'],
             content=item['content'],

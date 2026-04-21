@@ -18,6 +18,26 @@ REST_BASE = {
 }
 
 
+def post_exists(title: str, post_type: str = 'post') -> bool:
+    """워드프레스에 동일 제목 포스트가 이미 존재하는지 확인"""
+    rest_base = REST_BASE.get(post_type, post_type + 's')
+    try:
+        response = requests.get(
+            f"{WP_URL}/wp-json/wp/v2/{rest_base}",
+            auth=(WP_USER, WP_APP_PASS),
+            params={'search': title, 'per_page': 5},
+            timeout=10
+        )
+        posts = response.json()
+        if isinstance(posts, list):
+            for post in posts:
+                if post.get('title', {}).get('rendered', '').strip() == title.strip():
+                    return True
+    except Exception:
+        pass
+    return False
+
+
 def create_wp_post(title, content, post_type='post', category_id=None, event_date_start=''):
     """
     워드프레스에 포스트를 생성합니다.
