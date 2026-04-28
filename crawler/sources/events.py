@@ -71,12 +71,7 @@ def scrape() -> list:
 
         content_html = f"""<p>파크골프 대회 및 이벤트 소식을 전해드립니다.</p>
 {body_html}
-<p><a href="{original_link or naver_link}" target="_blank" rel="noopener noreferrer">👉 대회 상세 정보 보러가기</a></p>
-<hr />
-<p style="text-align:right;font-size:12px;color:#888;">
-  본 콘텐츠는 네이버 뉴스 검색 결과를 바탕으로 파크골프 코리아에서 자동 수집 및 재가공하였습니다.
-  원문 출처: <a href="{original_link or naver_link}" target="_blank" rel="noopener noreferrer">{original_link or naver_link}</a>
-</p>"""
+<p><a href="{original_link or naver_link}" target="_blank" rel="noopener noreferrer">👉 대회 상세 정보 보러가기</a></p>"""
 
         results.append({
             "title": title,
