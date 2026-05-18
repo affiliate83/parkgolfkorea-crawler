@@ -42,3 +42,6 @@ jobs:
 
       - name: 크롤러 실행
         run: cd crawler && python main.py
+
+      - name: 사이트맵 ping (네이버/구글 색인 요청)
+        run: cd crawler && python sitemap_ping.py
