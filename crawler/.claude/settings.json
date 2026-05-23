@@ -3,7 +3,13 @@
     "allow": [
       "PowerShell(Get-Command python)",
       "PowerShell(& \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" --version)",
-      "PowerShell(Invoke-WebRequest -Uri \"https://parkgolfkorea.com\" -Method Head -TimeoutSec 10)"
+      "PowerShell(Invoke-WebRequest -Uri \"https://parkgolfkorea.com\" -Method Head -TimeoutSec 10)",
+      "PowerShell(Invoke-WebRequest -Uri \"https://parkgolfk.com *)",
+      "PowerShell((Invoke-WebRequest -Uri \"https://parkgolfk.com *)",
+      "PowerShell($response = Invoke-WebRequest *)",
+      "PowerShell($xml = (Invoke-WebRequest *)",
+      "PowerShell($np = (Invoke-WebRequest *)",
+      "PowerShell($hp = (Invoke-WebRequest *)"
     ]
   }
 }

@@ -43,14 +43,14 @@ NAVER_LOCAL_HEADER = {
 # WordPress에서 파크골프장 목록 가져오기
 # ============================================================
 def get_wp_courses():
-    """등록된 파크골프장 전체 목록 반환"""
+    """등록된 파크골프장 전체 목록 반환 (context=edit으로 raw 콘텐츠 사용)"""
     courses = []
     page = 1
     while True:
         res = requests.get(
             f"{WP_URL}/wp-json/wp/v2/parkgolf_course",
             headers=AUTH_HEADER,
-            params={"per_page": 100, "page": page, "status": "publish"},
+            params={"per_page": 100, "page": page, "status": "publish", "context": "edit"},
             timeout=15
         )
         if res.status_code != 200:
@@ -60,7 +60,7 @@ def get_wp_courses():
             break
         for post in data:
             title   = re.sub(r'<[^>]+>', '', post["title"]["rendered"]).strip()
-            content = post["content"]["rendered"]
+            content = post["content"].get("raw", post["content"].get("rendered", ""))
             courses.append({
                 "id":      post["id"],
                 "title":   title,
@@ -72,8 +72,8 @@ def get_wp_courses():
 
 
 def needs_update(content):
-    """운영시간 또는 홈페이지가 '현장 문의'/'정보 없음'인 경우 업데이트 필요"""
-    return "현장 문의" in content or "정보 없음" in content
+    """업데이트 필요 여부: 현장 문의/정보 없음이 있거나 예약 방법 섹션이 없는 경우"""
+    return "현장 문의" in content or "정보 없음" in content or "예약 방법" not in content
 
 
 # ============================================================
@@ -399,11 +399,16 @@ def build_updated_content(title, old_content, info):
     hp_match = re.search(r'🌐 홈페이지</th><td>(.*?)</td>', old_content)
     old_hp = hp_match.group(1).strip() if hp_match else ""
 
+    # 기존 홀 수 유지
+    holes_match = re.search(r'⛳ 홀 수</th><td>(.*?)</td>', old_content)
+    old_holes = holes_match.group(1).strip() if holes_match else ""
+
     # 최종값 결정 (새 정보 우선, 없으면 기존값)
     final_phone    = info.get("phone") or old_phone or "정보 없음"
     final_hours    = info.get("hours") or "현장 문의"
     final_fee      = info.get("fee") or "현장 문의"
     final_parking  = info.get("parking") or "현장 문의"
+    final_holes    = info.get("holes") or old_holes or ""
     final_homepage = info.get("homepage") or (old_hp if old_hp and "정보 없음" not in old_hp else "")
 
     if final_homepage:
@@ -411,9 +416,28 @@ def build_updated_content(title, old_content, info):
     else:
         hp_cell = "정보 없음"
 
-    content = f"""<div class="course-intro">
+    # 홀 수 행 (있을 때만 표시)
+    holes_row = f"<tr><th>⛳ 홀 수</th><td>{final_holes}</td></tr>\n" if final_holes else ""
+
+    # 예약 방법 설명 (전화번호 있으면 구체적으로, 없으면 일반적으로)
+    if final_phone and final_phone != "정보 없음":
+        reservation_detail = f"""<li><strong>전화 예약</strong>: {final_phone}로 전화하여 원하는 날짜와 시간을 예약하세요.</li>
+<li><strong>현장 방문</strong>: 사전 예약 없이 현장에서 바로 이용 가능한 경우도 있습니다. 방문 전 전화 확인을 권장합니다.</li>
+<li><strong>단체 예약</strong>: 10인 이상 단체 방문 시 반드시 사전 예약이 필요합니다.</li>"""
+    else:
+        reservation_detail = """<li><strong>전화 예약</strong>: 시설 관리 사무소에 전화하여 원하는 날짜와 시간을 예약하세요.</li>
+<li><strong>현장 방문</strong>: 공공 파크골프장의 경우 선착순 이용이 가능한 곳도 있습니다.</li>
+<li><strong>단체 예약</strong>: 10인 이상 단체 방문 시 반드시 사전 예약이 필요합니다.</li>"""
+
+    # 이용요금 안내 텍스트
+    if final_fee and final_fee != "현장 문의":
+        fee_text = f"이용요금은 <strong>{final_fee}</strong>입니다. 정확한 요금은 방문 전 확인하세요."
+    else:
+        fee_text = "공공 파크골프장은 무료~소정의 이용료(1,000~5,000원)로 운영되는 경우가 많습니다. 민간 시설은 5,000~15,000원 수준이며, 정확한 요금은 방문 전 확인하세요."
+
+    table_content = f"""<div class="course-intro">
 <p><strong>{title}</strong>은(는) {address}에 위치한 파크골프장입니다.</p>
-<p>정확한 운영시간 및 요금은 아래 연락처로 문의하시거나 현장에서 확인하시기 바랍니다.</p>
+<p>아래에서 이용요금, 예약 방법, 운영시간 등 방문에 필요한 정보를 확인하세요.</p>
 </div>
 
 <div class="course-info-table">
@@ -422,7 +446,7 @@ def build_updated_content(title, old_content, info):
 <tbody>
 <tr><th>📍 주소</th><td>{address}</td></tr>
 <tr><th>📞 전화</th><td>{final_phone}</td></tr>
-<tr><th>🏷️ 분류</th><td>{category}</td></tr>
+{holes_row}<tr><th>🏷️ 분류</th><td>{category}</td></tr>
 <tr><th>💰 이용요금</th><td>{final_fee}</td></tr>
 <tr><th>🕐 운영시간</th><td>{final_hours}</td></tr>
 <tr><th>🚗 주차</th><td>{final_parking}</td></tr>
@@ -431,9 +455,29 @@ def build_updated_content(title, old_content, info):
 </table>
 </div>
 
+<h2>이용요금 안내</h2>
+<p>{fee_text}</p>
+
+<h2>예약 방법</h2>
+<ul>
+{reservation_detail}
+</ul>
+<p>예약 시 이용 가능 시간, 예약 가능 여부, 단체 이용 가능 여부를 함께 확인하면 대기 시간을 줄일 수 있습니다.</p>
+
 <p style="font-size:13px;color:#888;margin-top:16px;">※ 위 정보는 네이버 지도 기준이며, 실제와 다를 수 있습니다. 방문 전 반드시 전화로 확인하세요.</p>"""
 
-    return content
+    # AI 풍부화 섹션(FAQ 등) 보존 — 기존 콘텐츠에서 disclaimer 이후 내용 추출
+    enriched_part = ""
+    disclaimer_marker = "※ 위 정보는 네이버 지도 기준이며"
+    if disclaimer_marker in old_content:
+        after = old_content.split(disclaimer_marker, 1)[1]
+        p_end = after.find("</p>")
+        if p_end != -1:
+            enriched_part = after[p_end + 4:].strip()
+
+    if enriched_part:
+        return table_content + "\n\n" + enriched_part
+    return table_content
 
 
 def update_wp_post(post_id, new_content, meta=None):
