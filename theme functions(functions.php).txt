@@ -374,6 +374,7 @@ function parkgolf_event_card($post_id = null) {
 // 8. 광고 함수
 // ============================================================
 function parkgolf_coupang_banner($type = 'horizontal') {
+    return;
     $coupang_url = get_option('parkgolf_coupang_url', 'https://link.coupang.com/a/YOUR_CODE');
     if ($type === 'horizontal'): ?>
         <div class="ad-banner-section">
@@ -581,6 +582,43 @@ function parkgolf_schema_markup() {
         echo '<script type="application/ld+json">'
             . json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
             . '</script>' . "\n";
+
+        // BreadcrumbList — 코스 상세 페이지
+        $bc_items = [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => '홈', 'item' => home_url('/')],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => '파크골프장 검색', 'item' => home_url('/courses/')],
+        ];
+        $bc_pos = 3;
+        if (!empty($regions) && !is_wp_error($regions)) {
+            $r_link = get_term_link($regions[0]);
+            if (!is_wp_error($r_link)) {
+                $bc_items[] = ['@type' => 'ListItem', 'position' => $bc_pos++, 'name' => $regions[0]->name, 'item' => $r_link];
+            }
+        }
+        $bc_items[] = ['@type' => 'ListItem', 'position' => $bc_pos, 'name' => $title];
+        echo '<script type="application/ld+json">'
+            . json_encode(['@context' => 'https://schema.org', '@type' => 'BreadcrumbList', 'itemListElement' => $bc_items], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            . '</script>' . "\n";
+
+        // FAQPage — faq-item 마크업에서 Q&A 추출
+        $raw_content = get_the_content(null, false, $post_id);
+        $faq_entities = [];
+        if (preg_match_all("/<div[^>]+class=['\"]faq-item['\"][^>]*>(.*?)<\/div>/si", $raw_content, $fm)) {
+            foreach ($fm[1] as $item_html) {
+                $q = $a = '';
+                if (preg_match("/<h3[^>]*>(.*?)<\/h3>/si", $item_html, $qm))
+                    $q = trim(preg_replace('/^Q\.\s*/u', '', strip_tags($qm[1])));
+                if (preg_match("/<p[^>]*>(.*?)<\/p>/si", $item_html, $am))
+                    $a = trim(preg_replace('/^A\.\s*/u', '', strip_tags($am[1])));
+                if ($q && $a)
+                    $faq_entities[] = ['@type' => 'Question', 'name' => $q, 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $a]];
+            }
+        }
+        if (!empty($faq_entities)) {
+            echo '<script type="application/ld+json">'
+                . json_encode(['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => $faq_entities], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                . '</script>' . "\n";
+        }
     }
 
     if (is_page('courses')) {
@@ -651,44 +689,27 @@ function parkgolf_schema_markup() {
         echo '<script type="application/ld+json">'
             . json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
             . '</script>' . "\n";
+
+        // BreadcrumbList — 가이드/블로그 포스트
+        $post_cats = get_the_category($post_id);
+        $bc_items  = [['@type' => 'ListItem', 'position' => 1, 'name' => '홈', 'item' => home_url('/')]];
+        $bc_pos    = 2;
+        if (!empty($post_cats)) {
+            $bc_items[] = ['@type' => 'ListItem', 'position' => $bc_pos++, 'name' => $post_cats[0]->name, 'item' => get_category_link($post_cats[0]->term_id)];
+        }
+        $bc_items[] = ['@type' => 'ListItem', 'position' => $bc_pos, 'name' => get_the_title($post_id)];
+        echo '<script type="application/ld+json">'
+            . json_encode(['@context' => 'https://schema.org', '@type' => 'BreadcrumbList', 'itemListElement' => $bc_items], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            . '</script>' . "\n";
     }
 }
 add_action('wp_head', 'parkgolf_schema_markup');
-
-function parkgolf_seo_meta() {
-    if (!is_singular('parkgolf_course')) return;
-    if (defined('WPSEO_VERSION')) {
-        $post_id = get_the_ID();
-        $title   = get_the_title($post_id);
-        $address = get_post_meta($post_id, 'course_address', true);
-        $holes   = get_post_meta($post_id, 'course_holes', true);
-        $fee     = get_post_meta($post_id, 'course_fee', true);
-        $phone   = get_post_meta($post_id, 'course_phone', true);
-        $regions = get_the_terms($post_id, 'region');
-        $region  = (!empty($regions) && !is_wp_error($regions)) ? $regions[0]->name : '';
-
-        $parts = array();
-        if ($region)  $parts[] = $region . ' 위치';
-        if ($address) $parts[] = $address;
-        if ($holes)   $parts[] = $holes . '홀';
-        if ($fee)     $parts[] = '이용요금 ' . $fee;
-        if ($phone)   $parts[] = '문의 ' . $phone;
-        $parts[] = '예약방법 및 운영시간 안내';
-        $desc = $title . ' - ' . implode(', ', $parts);
-        $desc = mb_substr($desc, 0, 155);
-
-        add_filter('wpseo_title',    function() use ($title) { return $title . ' - 위치·예약·요금 | 파크골프 코리아'; });
-        add_filter('wpseo_metadesc', function() use ($desc)  { return $desc; });
-    }
-}
-add_action('wp_head', 'parkgolf_seo_meta', 1);
 
 // ============================================================
 // 14. ★ REST API - 메타 필드 노출 등록 (지역 탭 작동 핵심)
 // ============================================================
 function parkgolf_register_rest_meta_fields() {
 
-    // 파크골프장 메타 필드 → REST API 에 노출
     $course_fields = array(
         'course_address', 'course_holes', 'course_distance',
         'course_hours',   'course_fee',   'course_phone',
@@ -708,12 +729,19 @@ function parkgolf_register_rest_meta_fields() {
 add_action('init', 'parkgolf_register_rest_meta_fields');
 
 // ============================================================
-// 15. ★ REST API - region taxonomy 슬러그 필터 지원
-//     courses.js 에서 ?region=seoul,gyeonggi 형태로 쿼리 가능
+// 15. ★ REST API - region taxonomy 슬러그 필터 지원 (버그 수정됨)
 // ============================================================
+add_filter('rest_parkgolf_course_collection_params', function($query_params) {
+    $query_params['region_slug'] = array(
+        'description' => 'Region slug',
+        'type'        => 'string',
+    );
+    return $query_params;
+});
+
 function parkgolf_rest_region_filter( $args, $request ) {
-    if ( ! empty( $request['region'] ) ) {
-        $slugs = array_map( 'sanitize_text_field', explode( ',', $request['region'] ) );
+    if ( ! empty( $request['region_slug'] ) ) {
+        $slugs = array_map( 'sanitize_text_field', explode( ',', $request['region_slug'] ) );
         $args['tax_query'] = array(
             array(
                 'taxonomy' => 'region',
@@ -726,3 +754,318 @@ function parkgolf_rest_region_filter( $args, $request ) {
     return $args;
 }
 add_filter( 'rest_parkgolf_course_query', 'parkgolf_rest_region_filter', 10, 2 );
+
+// ============================================================
+// 16. Rank Math SEO - 메타 설명 자동 생성 + 골프장 페이지 최적화
+// ============================================================
+
+// 메타 설명 없을 때 본문에서 자동 생성 (기존 글 + 신규 글 모두 적용)
+add_filter('rank_math/frontend/description', function($desc) {
+    if (!empty($desc) || !is_singular()) return $desc;
+    $post_id = get_the_ID();
+    $text    = get_the_excerpt($post_id) ?: get_the_content(null, false, $post_id);
+    $text    = preg_replace('/\s+/', ' ', strip_tags($text));
+    return mb_substr(trim($text), 0, 155);
+});
+
+// 파크골프장 페이지 제목 최적화
+add_filter('rank_math/frontend/title', function($title) {
+    if (!is_singular('parkgolf_course')) return $title;
+    $post_id = get_the_ID();
+    $name    = get_the_title($post_id);
+    $regions = get_the_terms($post_id, 'region');
+    $region  = (!empty($regions) && !is_wp_error($regions)) ? $regions[0]->name . ' ' : '';
+    return $region . $name . ' - 위치·예약·요금 | 파크골프 코리아';
+}, 10);
+
+// 파크골프장 페이지 메타 설명 최적화
+add_filter('rank_math/frontend/description', function($desc) {
+    if (!is_singular('parkgolf_course')) return $desc;
+    $post_id = get_the_ID();
+    $name    = get_the_title($post_id);
+    $address = get_post_meta($post_id, 'course_address', true);
+    $holes   = get_post_meta($post_id, 'course_holes', true);
+    $fee     = get_post_meta($post_id, 'course_fee', true);
+    $phone   = get_post_meta($post_id, 'course_phone', true);
+    $regions = get_the_terms($post_id, 'region');
+    $region  = (!empty($regions) && !is_wp_error($regions)) ? $regions[0]->name : '';
+
+    $parts = array();
+    if ($region)  $parts[] = $region . ' 위치';
+    if ($address) $parts[] = $address;
+    if ($holes)   $parts[] = $holes . '홀';
+    if ($fee)     $parts[] = '이용요금 ' . $fee;
+    if ($phone)   $parts[] = '문의 ' . $phone;
+    $parts[] = '예약방법 및 운영시간 안내';
+
+    $desc = $name . ' - ' . implode(', ', $parts);
+    return mb_substr($desc, 0, 155);
+}, 20);
+
+// ============================================================
+// 17. 뉴스/이벤트 포스트 noindex (애드센스 심사 품질 관리)
+// ============================================================
+// 자동 수집 카테고리: 파크골프뉴스(23), 대회(11), 소식(24), 협회(26)
+define('PGK_NOINDEX_CATS', [23, 11, 24, 26]);
+
+add_filter('rank_math/frontend/robots', function($robots) {
+    // 자동 수집 카테고리 포스트 noindex
+    if (is_singular('post')) {
+        foreach (PGK_NOINDEX_CATS as $cat_id) {
+            if (in_category($cat_id)) {
+                unset($robots['index']);
+                $robots['noindex'] = 'noindex';
+                return $robots;
+            }
+        }
+    }
+    // 이벤트 커스텀 포스트 타입 전체 noindex
+    if (is_singular('parkgolf_event')) {
+        unset($robots['index']);
+        $robots['noindex'] = 'noindex';
+        return $robots;
+    }
+    // 자동 수집 카테고리 목록 페이지 + 이벤트 아카이브 noindex
+    if (is_category(PGK_NOINDEX_CATS) || is_post_type_archive('parkgolf_event') || is_tax('event_type')) {
+        unset($robots['index']);
+        $robots['noindex'] = 'noindex';
+        return $robots;
+    }
+    // 앱커뮤니티 카테고리 noindex (앱 전용)
+    if (is_singular('post') && has_category('parkgolf-community')) {
+        unset($robots['index']);
+        $robots['noindex'] = 'noindex';
+        return $robots;
+    }
+    return $robots;
+}, 20);
+
+// 사이트맵에서 이벤트 포스트 타입 제외
+add_filter('rank_math/sitemap/excluded_post_types', function($excluded) {
+    $excluded[] = 'parkgolf_event';
+    return $excluded;
+});
+
+// 사이트맵에서 자동 수집 카테고리 포스트 제외
+add_filter('rank_math/sitemap/entry', function($entry, $post_type, $post) {
+    if ($post_type === 'post') {
+        foreach (PGK_NOINDEX_CATS as $cat_id) {
+            if (in_category($cat_id, $post->ID)) {
+                return false;
+            }
+        }
+    }
+    return $entry;
+}, 10, 3);
+
+// parkgolf_course 사이트맵 쿼리에서 얇은 페이지 제외 (phone/fee/hours 모두 빈 코스)
+// rank_math/sitemap/entry 필터는 CPT에 미적용 → pre_get_posts로 쿼리 레벨에서 처리
+add_action('pre_get_posts', function($query) {
+    $is_sitemap = (get_query_var('sitemap') === 'parkgolf_course')
+        || (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'parkgolf_course-sitemap') !== false);
+    if (!$is_sitemap) return;
+    if ($query->get('post_type') !== 'parkgolf_course') return;
+    // 전화/요금/운영시간 중 하나라도 있는 코스만 사이트맵에 포함
+    $query->set('meta_query', [
+        'relation' => 'OR',
+        ['key' => 'course_phone', 'value' => '', 'compare' => '!='],
+        ['key' => 'course_fee',   'value' => '', 'compare' => '!='],
+        ['key' => 'course_hours', 'value' => '', 'compare' => '!='],
+    ]);
+});
+
+// ============================================================
+// 18. 파크골프코리아 앱 커뮤니티 REST API
+// ============================================================
+add_action('rest_api_init', function () {
+    register_rest_route('parkgolf/v1', '/community-post', [
+        'methods'             => 'POST',
+        'callback'            => 'pgk_community_post',
+        'permission_callback' => '__return_true',
+    ]);
+    register_rest_route('parkgolf/v1', '/community-comment', [
+        'methods'             => 'POST',
+        'callback'            => 'pgk_community_comment',
+        'permission_callback' => '__return_true',
+    ]);
+});
+
+function pgk_verify_kakao($kakao_token) {
+    if (empty($kakao_token)) return null;
+    $resp = wp_remote_get('https://kapi.kakao.com/v2/user/me', [
+        'headers' => ['Authorization' => 'Bearer ' . $kakao_token],
+        'timeout' => 10,
+    ]);
+    if (is_wp_error($resp)) return null;
+    $body = json_decode(wp_remote_retrieve_body($resp), true);
+    if (empty($body['id'])) return null;
+
+    $kakao_id = (string) $body['id'];
+    $nickname = $body['kakao_account']['profile']['nickname'] ?? '파크골퍼';
+    $email    = $body['kakao_account']['email'] ?? ($kakao_id . '@kakao.parkgolf');
+    $username = 'kakao_' . $kakao_id;
+    $user     = get_user_by('login', $username);
+    if (!$user) {
+        $user_id = wp_create_user($username, wp_generate_password(32), $email);
+        if (is_wp_error($user_id)) return null;
+        wp_update_user(['ID' => $user_id, 'display_name' => $nickname]);
+        $user = get_user_by('id', $user_id);
+    } else {
+        wp_update_user(['ID' => $user->ID, 'display_name' => $nickname]);
+    }
+    return $user;
+}
+
+function pgk_community_post(WP_REST_Request $request) {
+    $kakao_token = sanitize_text_field($request->get_param('kakao_token'));
+    $title       = sanitize_text_field($request->get_param('title'));
+    $content     = wp_kses_post($request->get_param('content'));
+
+    if (empty($title) || empty($content))
+        return new WP_Error('missing_fields', '제목과 내용은 필수입니다.', ['status' => 400]);
+
+    $user = pgk_verify_kakao($kakao_token);
+    if (!$user)
+        return new WP_Error('invalid_token', '카카오 인증 실패', ['status' => 401]);
+
+    $cat    = get_category_by_slug('parkgolf-community');
+    $cat_id = $cat ? $cat->term_id : 0;
+
+    $post_id = wp_insert_post([
+        'post_title'    => $title,
+        'post_content'  => nl2br($content),
+        'post_status'   => 'publish',
+        'post_author'   => $user->ID,
+        'post_category' => $cat_id ? [$cat_id] : [],
+    ], true);
+
+    if (is_wp_error($post_id))
+        return new WP_Error('insert_failed', $post_id->get_error_message(), ['status' => 500]);
+
+    return ['post_id' => $post_id, 'author' => $user->display_name];
+}
+
+function pgk_community_comment(WP_REST_Request $request) {
+    $kakao_token = sanitize_text_field($request->get_param('kakao_token'));
+    $post_id     = absint($request->get_param('post_id'));
+    $content     = sanitize_textarea_field($request->get_param('content'));
+
+    if (!$post_id || empty($content))
+        return new WP_Error('missing_fields', '필수 값 누락', ['status' => 400]);
+
+    $user = pgk_verify_kakao($kakao_token);
+    if (!$user)
+        return new WP_Error('invalid_token', '카카오 인증 실패', ['status' => 401]);
+
+    $comment_id = wp_insert_comment([
+        'comment_post_ID'      => $post_id,
+        'comment_content'      => $content,
+        'comment_author'       => $user->display_name,
+        'comment_author_email' => $user->user_email,
+        'user_id'              => $user->ID,
+        'comment_approved'     => 1,
+    ]);
+
+    if (!$comment_id)
+        return new WP_Error('comment_failed', '댓글 등록 실패', ['status' => 500]);
+
+    return ['comment_id' => $comment_id, 'author' => $user->display_name];
+}
+
+// ============================================================
+// 19. 카카오 OAuth 콜백 (/kakao-callback)
+// ============================================================
+add_action('init', function () {
+    $uri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+    if ($uri !== '/kakao-callback') return;
+
+    $code = sanitize_text_field($_GET['code'] ?? '');
+    if (!$code) {
+        header('Location: parkgolfkkorea://oauth/kakao?error=no_code');
+        exit;
+    }
+
+    // 인가 코드 → 액세스 토큰 교환
+    $resp = wp_remote_post('https://kauth.kakao.com/oauth/token', [
+        'body' => [
+            'grant_type'   => 'authorization_code',
+            'client_id'    => '83e317d4de45658d4be91a215af85150',
+            'redirect_uri' => 'https://parkgolfk.com/kakao-callback',
+            'code'         => $code,
+        ],
+        'timeout' => 10,
+    ]);
+
+    $access_token = '';
+    if (!is_wp_error($resp)) {
+        $data = json_decode(wp_remote_retrieve_body($resp), true);
+        $access_token = $data['access_token'] ?? '';
+    }
+
+    if ($access_token) {
+        header('Location: parkgolfkkorea://oauth/kakao?token=' . urlencode($access_token));
+    } else {
+        header('Location: parkgolfkkorea://oauth/kakao?error=token_failed');
+    }
+    exit;
+});
+
+// ============================================================
+// 20. 파크골프장 상세 페이지 하단 내부 링크 자동 추가
+// ============================================================
+add_filter('the_content', function($content) {
+    if (!is_singular('parkgolf_course') || !in_the_loop() || !is_main_query()) return $content;
+
+    $post_id = get_the_ID();
+    $regions = get_the_terms($post_id, 'region');
+    $links   = '';
+
+    if (!empty($regions) && !is_wp_error($regions)) {
+        $r_link = get_term_link($regions[0]);
+        if (!is_wp_error($r_link)) {
+            $links .= '<a href="' . esc_url($r_link) . '" class="pgk-ilink">'
+                    . esc_html($regions[0]->name) . ' 파크골프장 전체 보기</a>';
+        }
+    }
+    $links .= '<a href="' . esc_url(home_url('/courses/')) . '" class="pgk-ilink">전국 파크골프장 검색</a>';
+    $links .= '<a href="' . esc_url(get_category_link(10)) . '" class="pgk-ilink">파크골프 가이드</a>';
+
+    $content .= '<div class="pgk-related-nav"><strong>관련 정보</strong>'
+              . '<div class="pgk-ilink-wrap">' . $links . '</div></div>';
+    return $content;
+}, 20);
+
+add_action('wp_head', function() {
+    if (!is_singular('parkgolf_course')) return;
+    echo '<style>
+.pgk-related-nav{margin:32px 0 16px;padding:16px;background:#f5f9f6;border-radius:8px;border-left:4px solid #1a6e3c}
+.pgk-related-nav strong{display:block;margin-bottom:10px;color:#1a6e3c;font-size:15px}
+.pgk-ilink-wrap{display:flex;flex-wrap:wrap;gap:8px}
+.pgk-ilink{display:inline-block;padding:7px 14px;background:#fff;border:1px solid #1a6e3c;color:#1a6e3c;border-radius:20px;font-size:13px;text-decoration:none;transition:all .2s}
+.pgk-ilink:hover{background:#1a6e3c;color:#fff}
+</style>' . "\n";
+});
+
+// ============================================================
+// 얇은 콘텐츠 파크골프장 페이지 noindex
+// 전화/이용요금/운영시간/주소 중 3개 이상 비어있으면 검색 제외
+// ============================================================
+function pgk_is_thin_course($id) {
+    $empty = ['', '정보 없음', '현장 문의', '문의', '-', '해당 없음', '없음'];
+    $score = 0;
+    if (in_array(trim((string) (get_post_meta($id, 'course_phone',   true) ?: '')), $empty, true)) $score++;
+    if (in_array(trim((string) (get_post_meta($id, 'course_fee',     true) ?: '')), $empty, true)) $score++;
+    if (in_array(trim((string) (get_post_meta($id, 'course_hours',   true) ?: '')), $empty, true)) $score++;
+    $addr = trim((string) (get_post_meta($id, 'course_address', true) ?: ''));
+    if (empty($addr) || mb_strlen($addr) < 8) $score++;
+    return $score >= 3;
+}
+
+// Rank Math 필터: index 제거 + noindex 추가 (기존 max-snippet 등 보존)
+add_filter('rank_math/frontend/robots', function ($robots) {
+    if (!is_singular('parkgolf_course')) return $robots;
+    if (!pgk_is_thin_course(get_the_ID())) return $robots;
+    unset($robots['index']);
+    $robots['noindex'] = 'noindex';  // boolean 아닌 string — Rank Math 출력 형식 일치
+    return $robots;
+}, 20);
