@@ -260,3 +260,113 @@
     .related-grid { grid-template-columns: 1fr; }
     .article-share { flex-direction: column; align-items: flex-start; }
 }
+
+/* ── 코스 소개 및 특징 (enrich_course_description.py 생성 콘텐츠) ── */
+.course-desc {
+    margin: 32px 0;
+    padding: 28px 32px;
+    background: #f8fff9;
+    border-radius: var(--radius);
+    border: 1px solid #c8e6d4;
+}
+.course-desc h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-dark);
+    border-left: 4px solid var(--primary);
+    padding-left: 12px;
+    margin: 0 0 14px;
+}
+.course-desc h2:not(:first-child) { margin-top: 28px; }
+.course-desc p {
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--text-mid);
+    margin-bottom: 12px;
+}
+.course-desc ul, .course-desc ol {
+    padding-left: 22px;
+    margin-bottom: 14px;
+}
+.course-desc li {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text-mid);
+    margin-bottom: 5px;
+}
+
+/* ── FAQ 섹션 (enricher.py 생성 콘텐츠) ── */
+.faq-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+.faq-q {
+    background: var(--bg-light);
+    padding: 14px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+}
+.faq-q::before { content: 'Q. '; color: var(--primary); }
+.faq-a {
+    padding: 14px 18px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text-mid);
+    margin: 0;
+    border-top: 1px solid var(--border);
+}
+.faq-a::before { content: 'A. '; color: var(--primary); font-weight: 600; }
+
+/* ── 관련 정보 내부링크 블록 (functions.php the_content 필터) ── */
+.pgk-related-nav {
+    margin-top: 36px;
+    padding: 20px 24px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+.pgk-related-nav > strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.pgk-ilink-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pgk-ilink {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    background: #f0f9f4;
+    color: var(--primary);
+    border: 1px solid #c8e6d4;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.pgk-ilink:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .course-desc { padding: 20px; }
+    .course-desc h2 { font-size: 17px; }
+    .pgk-related-nav { padding: 16px; }
+    .pgk-ilink { font-size: 12px; padding: 7px 13px; }
+}

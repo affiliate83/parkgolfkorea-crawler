@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 WP_URL = os.getenv('WP_URL', 'https://parkgolfk.com')
-SITEMAP_URL = f'{WP_URL}/sitemap.xml'
+SITEMAP_URL = f'{WP_URL}/sitemap_index.xml'
 
 
 def ping_naver():
