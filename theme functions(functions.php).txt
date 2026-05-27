@@ -1003,10 +1003,17 @@ add_action('init', function () {
     }
 
     if ($access_token) {
-        header('Location: parkgolfkkorea://oauth/kakao?token=' . urlencode($access_token));
+        $deeplink = 'parkgolfkkorea://oauth/kakao?token=' . urlencode($access_token);
     } else {
-        header('Location: parkgolfkkorea://oauth/kakao?error=token_failed');
+        $deeplink = 'parkgolfkkorea://oauth/kakao?error=token_failed';
     }
+    // Android Custom Tabs는 HTTP Location redirect로 딥링크 처리 불가 → JS redirect 사용
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8">'
+       . '<script>window.location.replace(' . json_encode($deeplink) . ');</script>'
+       . '</head><body>'
+       . '<p>앱으로 이동 중입니다... <a href="' . esc_attr($deeplink) . '">여기를 탭하세요</a></p>'
+       . '</body></html>';
     exit;
 });
 
@@ -1069,3 +1076,72 @@ add_filter('rank_math/frontend/robots', function ($robots) {
     $robots['noindex'] = 'noindex';  // boolean 아닌 string — Rank Math 출력 형식 일치
     return $robots;
 }, 20);
+
+// ============================================================
+// 21. 스코어카드 REST API
+// ============================================================
+add_action('rest_api_init', function () {
+    register_rest_route('parkgolf/v1', '/scores', [
+        [
+            'methods'             => 'POST',
+            'callback'            => 'pgk_save_score',
+            'permission_callback' => '__return_true',
+        ],
+        [
+            'methods'             => 'GET',
+            'callback'            => 'pgk_get_scores',
+            'permission_callback' => '__return_true',
+        ],
+    ]);
+});
+
+function pgk_save_score(WP_REST_Request $request) {
+    $data        = $request->get_json_params();
+    $kakao_token = sanitize_text_field($data['kakao_token'] ?? '');
+    $user        = pgk_verify_kakao($kakao_token);
+
+    $entry = [
+        'id'          => 'srv_' . uniqid('', true),
+        'course_name' => sanitize_text_field($data['course_name'] ?? ''),
+        'holes'       => intval($data['holes'] ?? 9),
+        'scores'      => array_map('intval', (array) ($data['scores'] ?? [])),
+        'total_score' => intval($data['total_score'] ?? 0),
+        'total_par'   => intval($data['total_par'] ?? 0),
+        'date'        => sanitize_text_field($data['date'] ?? current_time('Y-m-d')),
+        'saved_at'    => current_time('c'),
+        'synced'      => true,
+    ];
+
+    if ($user) {
+        $existing = get_user_meta($user->ID, 'pg_scores', true) ?: [];
+        array_unshift($existing, $entry);
+        if (count($existing) > 200) $existing = array_slice($existing, 0, 200);
+        update_user_meta($user->ID, 'pg_scores', $existing);
+    }
+
+    return new WP_REST_Response(['success' => true, 'score' => $entry], 200);
+}
+
+function pgk_get_scores(WP_REST_Request $request) {
+    $kakao_token = sanitize_text_field($request->get_param('kakao_token') ?? '');
+    $user        = pgk_verify_kakao($kakao_token);
+
+    if (!$user) {
+        return new WP_REST_Response(['scores' => []], 200);
+    }
+
+    $scores = get_user_meta($user->ID, 'pg_scores', true) ?: [];
+    return new WP_REST_Response(['scores' => array_values($scores)], 200);
+}
+
+// ============================================================
+// app-ads.txt 서빙 (AdMob 앱 인증용)
+// ============================================================
+add_action('init', function () {
+    $uri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+    if ($uri === '/app-ads.txt') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "google.com, pub-9578724205171459, DIRECT, f08c47fec0942fa0\n";
+        exit;
+    }
+});
