@@ -1143,7 +1143,11 @@ add_action('wp_footer', function () {
     <div class="pgk-biz-inner">
         <span>상호: 피엠케이</span>
         <span class="pgk-biz-sep">|</span>
+        <span>대표자: 장현철</span>
+        <span class="pgk-biz-sep">|</span>
         <span>사업자등록번호: 761-47-01152</span>
+        <span class="pgk-biz-sep">|</span>
+        <span>통신판매업신고번호: 제 2025-경기오산-0518 호</span>
     </div>
 </div>
 <style>
