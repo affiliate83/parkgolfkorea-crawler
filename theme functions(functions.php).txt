@@ -1175,6 +1175,101 @@ add_action('wp_footer', function () {
 });
 
 // ============================================================
+// 23. 푸시 알림 토큰 등록 REST API
+// ============================================================
+add_action('rest_api_init', function () {
+    register_rest_route('parkgolf/v1', '/register-token', [
+        'methods'             => 'POST',
+        'callback'            => 'pgk_register_push_token',
+        'permission_callback' => '__return_true',
+    ]);
+});
+
+function pgk_register_push_token(WP_REST_Request $request) {
+    $data     = $request->get_json_params();
+    $token    = sanitize_text_field($data['token'] ?? '');
+    $platform = sanitize_text_field($data['platform'] ?? 'unknown');
+
+    if (empty($token) || strpos($token, 'ExponentPushToken[') !== 0) {
+        return new WP_REST_Response(['success' => false, 'message' => '유효하지 않은 토큰'], 400);
+    }
+
+    $tokens          = get_option('pgk_push_tokens', []);
+    $tokens[$token]  = $platform;
+    update_option('pgk_push_tokens', $tokens, false);
+
+    return new WP_REST_Response(['success' => true], 200);
+}
+
+// ============================================================
+// 24. WP Cron 하루 3회 푸시 알림 발송 (8시, 12시, 19시 KST)
+// ============================================================
+
+// 사용자 정의 스케줄: 8시간 간격
+add_filter('cron_schedules', function ($schedules) {
+    $schedules['pgk_8hours'] = [
+        'interval' => 8 * HOUR_IN_SECONDS,
+        'display'  => '8시간마다 (하루 3회)',
+    ];
+    return $schedules;
+});
+
+// 테마 로드 시 스케줄 등록 (최초 1회만)
+add_action('after_setup_theme', function () {
+    if (!wp_next_scheduled('pgk_push_cron')) {
+        // 다음 KST 08:00 = UTC 23:00 (전날)
+        $next = strtotime('today 23:00:00 UTC');
+        if ($next < time()) $next = strtotime('tomorrow 23:00:00 UTC');
+        wp_schedule_event($next, 'pgk_8hours', 'pgk_push_cron');
+    }
+});
+
+add_action('pgk_push_cron', 'pgk_send_push_to_all');
+
+function pgk_send_push_to_all() {
+    $tokens = get_option('pgk_push_tokens', []);
+    if (empty($tokens)) return;
+
+    // 최신 이벤트 또는 일반 포스트 1건
+    $posts = get_posts([
+        'post_type'   => ['post', 'parkgolf_event'],
+        'post_status' => 'publish',
+        'numberposts' => 1,
+        'orderby'     => 'date',
+        'order'       => 'DESC',
+    ]);
+    if (empty($posts)) return;
+
+    $post  = $posts[0];
+    $type  = $post->post_type === 'parkgolf_event' ? 'event' : 'news';
+    $title = get_the_title($post);
+    $body  = wp_trim_words(wp_strip_all_tags(get_post_field('post_excerpt', $post->ID) ?: get_post_field('post_content', $post->ID)), 20, '...');
+
+    $messages = [];
+    foreach (array_keys($tokens) as $token) {
+        $messages[] = [
+            'to'    => $token,
+            'title' => '파크골프코리아',
+            'body'  => $title,
+            'sound' => 'default',
+            'data'  => ['postId' => $post->ID, 'type' => $type, 'title' => $title],
+        ];
+    }
+
+    // Expo Push API: 최대 100건씩 배치 전송
+    foreach (array_chunk($messages, 100) as $batch) {
+        wp_remote_post('https://exp.host/--/api/v2/push/send', [
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json',
+            ],
+            'body'    => wp_json_encode($batch),
+            'timeout' => 15,
+        ]);
+    }
+}
+
+// ============================================================
 // app-ads.txt 서빙 (AdMob 앱 인증용)
 // ============================================================
 add_action('init', function () {
