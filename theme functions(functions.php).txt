@@ -1191,12 +1191,13 @@ add_action('rest_api_init', function () {
     ]);
 });
 
+// GitHub Secrets 의 PUSH_NOTIFY_SECRET 값과 반드시 동일하게 설정
+define('PGK_PUSH_SECRET_KEY', 'pgk-push-2026-xk9m3f7q');
+
 function pgk_trigger_push_now(WP_REST_Request $request) {
     $data   = $request->get_json_params();
     $secret = sanitize_text_field($data['secret'] ?? '');
-    // 시크릿 키: WP-CLI로 설정 → wp option set pgk_push_secret YOUR_KEY
-    $expected = get_option('pgk_push_secret', '');
-    if (empty($expected) || !hash_equals($expected, $secret)) {
+    if (!hash_equals(PGK_PUSH_SECRET_KEY, $secret)) {
         return new WP_REST_Response(['success' => false, 'message' => '인증 실패'], 403);
     }
     pgk_send_push_to_all();
