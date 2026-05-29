@@ -1003,23 +1003,14 @@ add_action('init', function () {
     }
 
     if ($access_token) {
-        $param       = 'token=' . urlencode($access_token);
+        $deeplink = 'parkgolfkkorea://oauth/kakao?token=' . urlencode($access_token);
     } else {
-        $param       = 'error=token_failed';
+        $deeplink = 'parkgolfkkorea://oauth/kakao?error=token_failed';
     }
-    $deeplink    = 'parkgolfkkorea://oauth/kakao?' . $param;
-    // Android Chrome Custom Tabs는 커스텀 스킴 JS redirect를 차단 → intent:// 사용
-    $intent_link = 'intent://oauth/kakao?' . $param
-                 . '#Intent;scheme=parkgolfkkorea;package=com.parkgolfkorea.app;end';
-
+    // WebView의 onShouldStartLoadWithRequest가 parkgolfkkorea:// 를 인터셉트
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html><head><meta charset="utf-8">'
-       . '<script>'
-       . '(function(){'
-       . '  var isAndroid = /android/i.test(navigator.userAgent);'
-       . '  window.location.replace(isAndroid ? ' . json_encode($intent_link) . ' : ' . json_encode($deeplink) . ');'
-       . '})();'
-       . '</script>'
+       . '<script>window.location.replace(' . json_encode($deeplink) . ');</script>'
        . '</head><body>'
        . '<p>앱으로 이동 중입니다... <a href="' . esc_attr($deeplink) . '">여기를 탭하세요</a></p>'
        . '</body></html>';
