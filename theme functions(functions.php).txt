@@ -1175,7 +1175,7 @@ add_action('wp_footer', function () {
 });
 
 // ============================================================
-// 23. 푸시 알림 토큰 등록 REST API
+// 23. 푸시 알림 토큰 등록 + 외부 트리거 REST API
 // ============================================================
 add_action('rest_api_init', function () {
     register_rest_route('parkgolf/v1', '/register-token', [
@@ -1183,7 +1183,25 @@ add_action('rest_api_init', function () {
         'callback'            => 'pgk_register_push_token',
         'permission_callback' => '__return_true',
     ]);
+    // GitHub Actions에서 호출하는 푸시 발송 트리거
+    register_rest_route('parkgolf/v1', '/send-push-now', [
+        'methods'             => 'POST',
+        'callback'            => 'pgk_trigger_push_now',
+        'permission_callback' => '__return_true',
+    ]);
 });
+
+function pgk_trigger_push_now(WP_REST_Request $request) {
+    $data   = $request->get_json_params();
+    $secret = sanitize_text_field($data['secret'] ?? '');
+    // 시크릿 키: WP-CLI로 설정 → wp option set pgk_push_secret YOUR_KEY
+    $expected = get_option('pgk_push_secret', '');
+    if (empty($expected) || !hash_equals($expected, $secret)) {
+        return new WP_REST_Response(['success' => false, 'message' => '인증 실패'], 403);
+    }
+    pgk_send_push_to_all();
+    return new WP_REST_Response(['success' => true, 'time' => current_time('c')], 200);
+}
 
 function pgk_register_push_token(WP_REST_Request $request) {
     $data     = $request->get_json_params();
@@ -1230,17 +1248,32 @@ function pgk_send_push_to_all() {
     $tokens = get_option('pgk_push_tokens', []);
     if (empty($tokens)) return;
 
-    // 최신 이벤트 또는 일반 포스트 1건
+    // 최신 7건 중 랜덤 선택 (최신일수록 가중치 높음)
     $posts = get_posts([
         'post_type'   => ['post', 'parkgolf_event'],
         'post_status' => 'publish',
-        'numberposts' => 1,
+        'numberposts' => 7,
         'orderby'     => 'date',
         'order'       => 'DESC',
     ]);
     if (empty($posts)) return;
 
-    $post  = $posts[0];
+    // 가중 랜덤: 1번째=7, 2번째=6 ... 7번째=1
+    $total = 0;
+    $weights = [];
+    foreach ($posts as $i => $_) {
+        $w = max(1, 7 - $i);
+        $weights[] = $w;
+        $total += $w;
+    }
+    $rand = mt_rand(1, $total);
+    $cum  = 0;
+    $idx  = 0;
+    foreach ($weights as $i => $w) {
+        $cum += $w;
+        if ($rand <= $cum) { $idx = $i; break; }
+    }
+    $post  = $posts[$idx];
     $type  = $post->post_type === 'parkgolf_event' ? 'event' : 'news';
     $title = get_the_title($post);
     $body  = wp_trim_words(wp_strip_all_tags(get_post_field('post_excerpt', $post->ID) ?: get_post_field('post_content', $post->ID)), 20, '...');
