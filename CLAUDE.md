@@ -31,15 +31,30 @@ E:\projects\parkgolfkkorea  crawler/
 - WP REST API 인증은 Application Password만 사용 (Basic Auth 플러그인 금지)
 
 ## 주요 명령어
+- **이 PC에서는 `python` 대신 `py` 명령어 사용** (python은 인식 안 됨)
 - pip install -r requirements.txt : 크롤러 의존성 설치
-- python crawler/main.py : 크롤러 수동 실행
+- py crawler/main.py : 크롤러 수동 실행
 - wp post list --post_type=parkgolf_event : WP-CLI 이벤트 포스트 확인
 
 ## 수익화 전략
 - 1단계: 쿠팡 파트너스 (애드센스 승인 전) - 정적 이미지+링크 방식
 - 2단계: 구글 애드센스 (콘텐츠 충분 후 신청)
 
+## 앱 빌드 규칙 (E:\projects\parkgolfkkorea-app)
+- **빌드 전 반드시 버전 확인**: `grep -E "version|versionCode" app.json app.config.js`
+- versionCode는 app.json과 app.config.js **둘 다** 동시에 올려야 함
+- versionName(version)과 versionCode 규칙: version "1.0.X" ↔ versionCode X+2 (현재 1.0.11/12)
+- 새 네이티브 모듈 추가 시 반드시 새 빌드 필요
+- 빌드 명령어: `eas build --platform android --profile production` (앱 폴더에서 실행)
+- Play Console 제출: 빌드 완료 후 .aab 다운로드 → 프로덕션 → 새 릴리즈
+
 ## 주의사항
 - 쿠팡 파트너스 링크는 정적 이미지+a태그 방식으로만 삽입 (iframe 스크립트 방식 사용 금지)
 - 자동 포스팅 글에는 반드시 중복 체크 후 업로드
 - 구글 애드센스 승인 전까지 쿠팡 파트너스로 수익화 운영
+
+## 커뮤니케이션 규칙
+- 명령어를 제공할 때는 반드시 다음을 함께 설명할 것:
+  1. 이 명령어가 무엇을 하는지 (목적)
+  2. 어디서 실행해야 하는지 (터미널, VS Code, CMD 등)
+  3. 실행 후 어떤 결과가 나와야 정상인지
