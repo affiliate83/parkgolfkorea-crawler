@@ -1192,8 +1192,8 @@ add_action('rest_api_init', function () {
 });
 
 function pgk_trigger_push_now(WP_REST_Request $request) {
-    $data   = $request->get_json_params();
-    $secret = sanitize_text_field($data['secret'] ?? '');
+    // JSON body 또는 form data 모두 지원
+    $secret = sanitize_text_field($request->get_param('secret') ?? '');
     // 시크릿 키는 wp-config.php 에 define('PGK_PUSH_SECRET_KEY', '...') 로 설정
     $expected = defined('PGK_PUSH_SECRET_KEY') ? PGK_PUSH_SECRET_KEY : '';
     if (empty($expected) || !hash_equals($expected, $secret)) {

@@ -16,8 +16,7 @@ jobs:
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             https://parkgolfk.com/wp-json/parkgolf/v1/send-push-now \
-            -H "Content-Type: application/json" \
-            -d "{\"secret\": \"${{ secrets.PUSH_NOTIFY_SECRET }}\"}")
+            -d "secret=${{ secrets.PUSH_NOTIFY_SECRET }}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
