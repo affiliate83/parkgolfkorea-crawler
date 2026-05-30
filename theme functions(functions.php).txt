@@ -1204,9 +1204,9 @@ function pgk_trigger_push_now(WP_REST_Request $request) {
 }
 
 function pgk_register_push_token(WP_REST_Request $request) {
-    $data     = $request->get_json_params();
-    $token    = sanitize_text_field($data['token'] ?? '');
-    $platform = sanitize_text_field($data['platform'] ?? 'unknown');
+    // JSON body 또는 form data 모두 지원
+    $token    = sanitize_text_field($request->get_param('token') ?? '');
+    $platform = sanitize_text_field($request->get_param('platform') ?? 'unknown');
 
     if (empty($token) || strpos($token, 'ExponentPushToken[') !== 0) {
         return new WP_REST_Response(['success' => false, 'message' => '유효하지 않은 토큰'], 400);
