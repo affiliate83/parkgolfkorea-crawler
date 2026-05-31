@@ -10,10 +10,11 @@ from dotenv import load_dotenv
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
 
-WP_URL      = os.getenv('WP_URL')
-WP_USER     = os.getenv('WP_USER')
-WP_APP_PASS = os.getenv('WP_APP_PASS')
+WP_URL            = os.getenv('WP_URL')
+WP_USER           = os.getenv('WP_USER')
+WP_APP_PASS       = os.getenv('WP_APP_PASS')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+PEXELS_API_KEY    = os.getenv('PEXELS_API_KEY')
 
 AUTH = (WP_USER, WP_APP_PASS)
 DONE_FILE = os.path.join(os.path.dirname(__file__), 'columns_done.txt')
@@ -63,6 +64,64 @@ def load_done():
 def save_done(title):
     with open(DONE_FILE, 'a', encoding='utf-8') as f:
         f.write(title + '\n')
+
+PEXELS_KEYWORD_MAP = [
+    (["클럽", "장비", "용품"],           "golf club equipment"),
+    (["공", "볼"],                       "golf ball outdoor"),
+    (["스윙", "자세", "기술"],           "golf swing outdoor"),
+    (["초보", "입문", "시작"],           "senior golf beginner outdoor"),
+    (["건강", "운동", "효과", "칼로리"], "elderly exercise outdoor park"),
+    (["예약", "이용", "비용", "가격"],   "park outdoor golf course"),
+    (["규칙", "에티켓", "매너"],         "golf etiquette outdoor"),
+    (["코스", "홀", "경기", "라운드"],   "golf course green hole"),
+    (["날씨", "계절", "겨울", "여름", "봄", "가을"], "outdoor golf season"),
+    (["동호회", "모임", "가족"],         "senior group golf outdoor"),
+    (["부상", "스트레칭"],               "senior exercise stretching"),
+    (["인기", "트렌드"],                 "park golf korea outdoor"),
+]
+PEXELS_DEFAULT = "park golf outdoor elderly"
+
+def pexels_query(title):
+    for kws, q in PEXELS_KEYWORD_MAP:
+        if any(k in title for k in kws):
+            return q
+    return PEXELS_DEFAULT
+
+def fetch_pexels_image(query):
+    if not PEXELS_API_KEY:
+        return None
+    res = requests.get(
+        "https://api.pexels.com/v1/search",
+        headers={"Authorization": PEXELS_API_KEY},
+        params={"query": query, "per_page": 5, "orientation": "landscape"},
+        timeout=10
+    )
+    photos = res.json().get("photos", []) if res.status_code == 200 else []
+    return photos[0]["src"]["large"] if photos else None
+
+def upload_thumbnail(post_id, image_url, title):
+    img = requests.get(image_url, timeout=20)
+    if img.status_code != 200:
+        return
+    auth_b64 = base64.b64encode(f"{WP_USER}:{WP_APP_PASS}".encode()).decode()
+    media = requests.post(
+        f"{WP_URL}/wp-json/wp/v2/media",
+        headers={
+            "Authorization": f"Basic {auth_b64}",
+            "Content-Disposition": f'attachment; filename="col_{post_id}.jpg"',
+            "Content-Type": "image/jpeg",
+        },
+        data=img.content, timeout=30
+    )
+    if media.status_code != 201:
+        return
+    media_id = media.json()["id"]
+    requests.post(
+        f"{WP_URL}/wp-json/wp/v2/posts/{post_id}",
+        auth=AUTH,
+        json={"featured_media": media_id},
+        timeout=10
+    )
 
 def get_guide_category_id():
     res = requests.get(
@@ -114,7 +173,13 @@ def publish(title, content, cat_id):
         timeout=20
     )
     if res.status_code == 201:
-        print(f"[OK] 발행 완료: {title} (ID {res.json()['id']})")
+        post_id = res.json()['id']
+        print(f"[OK] 발행 완료: {title} (ID {post_id})")
+        # 썸네일 자동 추가
+        img_url = fetch_pexels_image(pexels_query(title))
+        if img_url:
+            upload_thumbnail(post_id, img_url, title)
+            print(f"[OK] 썸네일 추가 완료")
         return True
     print(f"[FAIL] {res.status_code} - {res.text[:200]}")
     return False

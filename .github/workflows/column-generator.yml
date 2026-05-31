@@ -35,6 +35,7 @@ jobs:
           WP_USER=${{ secrets.WP_USER }}
           WP_APP_PASS=${{ secrets.WP_APP_PASS }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          PEXELS_API_KEY=${{ secrets.PEXELS_API_KEY }}
           EOF
 
       - name: 칼럼 생성 및 발행 (하루 2편)
