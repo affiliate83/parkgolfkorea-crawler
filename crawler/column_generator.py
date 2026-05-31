@@ -64,25 +64,16 @@ def save_done(title):
     with open(DONE_FILE, 'a', encoding='utf-8') as f:
         f.write(title + '\n')
 
-def get_column_category_id():
+def get_guide_category_id():
     res = requests.get(
         f"{WP_URL}/wp-json/wp/v2/categories",
         auth=AUTH,
-        params={'search': '칼럼', 'per_page': 10},
+        params={'search': '가이드', 'per_page': 10},
         timeout=10
     )
     for cat in res.json():
-        if '칼럼' in cat.get('name', ''):
+        if '가이드' in cat.get('name', ''):
             return cat['id']
-    # 없으면 생성
-    res = requests.post(
-        f"{WP_URL}/wp-json/wp/v2/categories",
-        auth=AUTH,
-        json={'name': '파크골프 칼럼', 'slug': 'parkgolf-column'},
-        timeout=10
-    )
-    if res.status_code == 201:
-        return res.json()['id']
     return None
 
 def generate_column(title, description):
@@ -137,7 +128,7 @@ def main():
         print("[INFO] 모든 칼럼 주제가 발행 완료되었습니다.")
         return
 
-    cat_id = get_column_category_id()
+    cat_id = get_guide_category_id()
     count = 0
 
     for title, desc in pending:
