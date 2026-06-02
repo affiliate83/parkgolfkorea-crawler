@@ -14,9 +14,8 @@ jobs:
     steps:
       - name: 푸시 알림 발송 트리거
         run: |
-          RESPONSE=$(curl -s -w "\n%{http_code}" -G \
-            "https://parkgolfk.com/wp-json/parkgolf/v1/send-push-now" \
-            --data-urlencode "secret=${{ secrets.PUSH_NOTIFY_SECRET }}")
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://parkgolfk.com/wp-json/parkgolf/v1/send-push-now?secret=${{ secrets.PUSH_NOTIFY_SECRET }}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
