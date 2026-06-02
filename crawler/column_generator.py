@@ -130,6 +130,8 @@ def get_guide_category_id():
         params={'search': '가이드', 'per_page': 10},
         timeout=10
     )
+    if not res.ok or not res.text.strip():
+        raise RuntimeError(f"카테고리 조회 실패: HTTP {res.status_code} / {res.text[:200]}")
     for cat in res.json():
         if '가이드' in cat.get('name', ''):
             return cat['id']
