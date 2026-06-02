@@ -15,6 +15,8 @@ jobs:
       - name: 푸시 알림 발송 트리거
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -H "Accept: application/json" \
             "https://parkgolfk.com/wp-json/parkgolf/v1/send-push-now?secret=${{ secrets.PUSH_NOTIFY_SECRET }}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
