@@ -1220,29 +1220,19 @@ function pgk_register_push_token(WP_REST_Request $request) {
 }
 
 // ============================================================
-// 24. WP Cron 하루 3회 푸시 알림 발송 (8시, 12시, 19시 KST)
+// 24. WP Cron 푸시 알림 — 비활성화 (GitHub Actions에서 09:00/12:00/19:00 KST 발송)
 // ============================================================
 
-// 사용자 정의 스케줄: 8시간 간격
-add_filter('cron_schedules', function ($schedules) {
-    $schedules['pgk_8hours'] = [
-        'interval' => 8 * HOUR_IN_SECONDS,
-        'display'  => '8시간마다 (하루 3회)',
-    ];
-    return $schedules;
-});
-
-// 테마 로드 시 스케줄 등록 (최초 1회만)
+// 기존에 등록된 WP Cron 스케줄 제거 (한 번만 실행됨)
 add_action('after_setup_theme', function () {
-    if (!wp_next_scheduled('pgk_push_cron')) {
-        // 다음 KST 08:00 = UTC 23:00 (전날)
-        $next = strtotime('today 23:00:00 UTC');
-        if ($next < time()) $next = strtotime('tomorrow 23:00:00 UTC');
-        wp_schedule_event($next, 'pgk_8hours', 'pgk_push_cron');
+    $ts = wp_next_scheduled('pgk_push_cron');
+    if ($ts) {
+        wp_unschedule_event($ts, 'pgk_push_cron');
     }
+    wp_clear_scheduled_hook('pgk_push_cron');
 });
 
-add_action('pgk_push_cron', 'pgk_send_push_to_all');
+// pgk_send_push_to_all 은 REST API(/send-push-now)에서 계속 사용하므로 훅은 유지하지 않음
 
 function pgk_send_push_to_all() {
     $tokens = get_option('pgk_push_tokens', []);
@@ -1356,6 +1346,16 @@ function pgk_send_push_to_all() {
         'title'        => $title,
     ];
 }
+
+// ============================================================
+// robots.txt sitemap 선언 추가
+// ============================================================
+add_filter('robots_txt', function ($output, $public) {
+    if ($public) {
+        $output .= "\nSitemap: https://parkgolfk.com/sitemap_index.xml\n";
+    }
+    return $output;
+}, 10, 2);
 
 // ============================================================
 // app-ads.txt 서빙 (AdMob 앱 인증용)
