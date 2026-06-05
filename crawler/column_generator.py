@@ -124,9 +124,13 @@ def upload_thumbnail(post_id, image_url, title):
     )
 
 def get_guide_category_id():
+    headers = {
+        'Authorization': 'Basic ' + base64.b64encode(f'{WP_USER}:{WP_APP_PASS}'.encode()).decode(),
+        'Content-Type': 'application/json',
+    }
     res = requests.get(
         f"{WP_URL}/wp-json/wp/v2/categories",
-        auth=AUTH,
+        headers=headers,
         params={'search': '가이드', 'per_page': 10},
         timeout=10
     )
